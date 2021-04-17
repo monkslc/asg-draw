@@ -1,0 +1,5 @@
+NOTES.txt
+*.exe
+*.ilk
+*.pdb
+.vscode/
