@@ -1,2 +1,4 @@
-clang --debug -I ./includes -o sviggy.exe `
-    src/sviggy.cpp
+clang --debug -I ./includes -I external -o sviggy.exe `
+    src/sviggy.cpp `
+    src/svg.cpp `
+    external/pugixml.cpp

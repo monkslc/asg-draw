@@ -6,19 +6,24 @@
 #endif
 
 #include <d2d1.h>
-#include <stdio.h>
-#include <windows.h>
 #include <vector>
+#include <windows.h>
 
+#include "pugixml.hpp"
+
+#include "svg.hpp"
 #include "sviggy.hpp"
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+void CreateDebugConsole();
 
 D2State d2state;
-SviggyState state;
+Document doc;
+View view;
 
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
-{
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
+    CreateDebugConsole();
+
     const wchar_t CLASS_NAME[]  = L"Sample Window Class";
 
     HRESULT hr = d2state.InitializeFactory();
@@ -57,6 +62,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
     ShowWindow(hwnd, nCmdShow);
 
+    // This is here just for testing purposes so we have something to look at on load
+    LoadSVGFile((char *)"test-svg.svg", &doc);
+
     MSG msg = { };
     while (GetMessage(&msg, NULL, 0, 0))
     {
@@ -83,36 +91,37 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         }
 
         case WM_LBUTTONDOWN: {
-            UINT x = LOWORD(lParam);
-            UINT y = HIWORD(lParam);
-            state.shapes.emplace_back(x, y, 25, 25);
+            float screen_x = LOWORD(lParam);
+            float screen_y = HIWORD(lParam);
+            Position p = view.GetDocumentPosition(screen_x, screen_y);
+            doc.shapes.emplace_back(p.x, p.y, 10, 10);
             return 0;
         }
 
         case WM_KEYDOWN: {
             switch (wParam) {
                 case VK_LEFT:
-                    state.view_x -= 10;
+                    view.x += 10;
                     break;
 
                 case VK_RIGHT:
-                    state.view_x += 10;
+                    view.x -= 10;
                     break;
 
                 case VK_DOWN:
-                    state.view_y += 10;
+                    view.y -= 10;
                     break;
 
                 case VK_UP:
-                    state.view_y -= 10;
+                    view.y += 10;
                     break;
 
                 case VK_OEM_PLUS:
-                    state.scale += 0.1;
+                    view.scale += 0.1;
                     break;
 
                 case VK_OEM_MINUS:
-                    state.scale -= 0.1;
+                    view.scale -= 0.1;
                     break;
 
                 default:
@@ -123,10 +132,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
         case WM_PAINT: {
             d2state.CreateDeviceResources(hwnd);
-            d2state.Render(&state);
+            d2state.Render(&doc, &view);
             return 0;
         }
     }
 
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+void CreateDebugConsole() {
+    AllocConsole();
+    FILE *file;
+    freopen_s(&file, "CON", "w", stdout);
 }
