@@ -1,6 +1,7 @@
 #ifndef SVIGGY_H
 #define SVIGGY_H
 
+#include <dwrite.h>
 #include <d2d1.h>
 #include <vector>
 
@@ -16,9 +17,17 @@ class Rect {
     Rect(float x, float y, float width, float height) : x(x), y(y), width(width), height(height) {};
 };
 
+class Text {
+    public:
+    float x, y;
+    std::string text;
+    Text(float x, float y, std::string text) : x(x), y(y), text(text) {};
+};
+
 class Document {
     public:
     std::vector<Rect> shapes;
+    std::vector<Text> texts;
     Document() {};
 };
 
@@ -53,12 +62,50 @@ class View {
 class D2State {
     public:
     ID2D1Factory* factory;
+    IDWriteFactory *write_factory;
+    IDWriteTextFormat *text_format;
+
     ID2D1HwndRenderTarget* renderTarget;
     ID2D1SolidColorBrush* lightSlateGrayBrush;
     ID2D1SolidColorBrush* cornflowerBlueBrush;
     ID2D1SolidColorBrush* blackBrush;
-    HRESULT InitializeFactory() {
-        return D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &this->factory);
+    HRESULT CreateDeviceIndependentResources() {
+        HRESULT hr;
+        hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &this->factory);
+
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+        hr = DWriteCreateFactory(
+            DWRITE_FACTORY_TYPE_SHARED,
+            __uuidof(write_factory),
+            reinterpret_cast<IUnknown **>(&write_factory)
+        );
+
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+         hr = write_factory->CreateTextFormat(
+            L"Arial",
+            NULL,
+            DWRITE_FONT_WEIGHT_NORMAL,
+            DWRITE_FONT_STYLE_NORMAL,
+            DWRITE_FONT_STRETCH_NORMAL,
+            12.0 / kPixelsPerInch,
+            L"",
+            &text_format
+        );
+
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+        text_format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+        text_format->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+
+        return hr;
     }
 
     HRESULT CreateDeviceResources(HWND hwnd) {
@@ -157,6 +204,7 @@ class D2State {
             this->renderTarget->DrawRectangle(&rectangle, this->blackBrush, 0.003);
         }
 
+        this->RenderText(doc, view);
 
         HRESULT hr = this->renderTarget->EndDraw();
         if (hr == D2DERR_RECREATE_TARGET) {
@@ -165,6 +213,21 @@ class D2State {
 
         return hr;
 
+    }
+
+    void RenderText(Document *doc, View *view) {
+        for (auto &text : doc->texts) {
+            std::wstring wide_string = std::wstring(text.text.begin(), text.text.end());
+            this->renderTarget->DrawText(
+                wide_string.c_str(),
+                wide_string.size(),
+                this->text_format,
+                // TODO: not sure what to set for the right and bottom parameters
+                // Right now its 100 but this will break if we have something wider
+                D2D1::RectF(text.x, text.y, 100, 100),
+                this->blackBrush
+            );
+        }
     }
 
     void RenderGridLines() {
@@ -194,5 +257,8 @@ class D2State {
 
     }
 };
+
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+void CreateDebugConsole();
 
 #endif

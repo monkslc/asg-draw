@@ -1,9 +1,8 @@
-#include <math.h>
-
 #include "pugixml.hpp"
 
 #include "svg.hpp"
 #include "sviggy.hpp"
+#include "utils.hpp"
 
 void LoadSVGFile(char *file, Document *doc) {
     pugi::xml_document xml;
@@ -40,26 +39,12 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
             doc->shapes.emplace_back(x, y, w, h);
             continue;
         }
+
+        if (strcmp(node->name(), "text") == 0) {
+            float x = RoundFloatingInput(std::stof(node->attribute("x").value()) / viewport->uupix);
+            float y = RoundFloatingInput(std::stof(node->attribute("y").value()) / viewport->uupiy);
+            doc->texts.emplace_back(x, y, std::string(node->text().get()));
+        }
+
     }
-}
-
-// The svg input files usually has values that are slightly different than what was intended
-// when creating them due to floating point errors. We currently round the input shapes to the
-// nearest thousandth to correct this.
-float RoundFloatingInput(float x) {
-   return roundf(x * 1000) / 1000;
-}
-
-char* FindChar(char *str, char ch) {
-    while (*str && *str != ch )
-        str++;
-
-    return str;
-}
-
-char* SkipChar(char *str, char ch) {
-    str = FindChar(str, ch);
-    str++;
-
-    return str;
 }

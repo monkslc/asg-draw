@@ -1,5 +1,6 @@
-#pragma comment(lib, "user32")
 #pragma comment(lib, "d2d1")
+#pragma comment(lib, "dwrite")
+#pragma comment(lib, "user32")
 
 #ifndef UNICODE
 #define UNICODE
@@ -14,22 +15,20 @@
 #include "svg.hpp"
 #include "sviggy.hpp"
 
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-void CreateDebugConsole();
-
 D2State d2state;
 Document doc;
 View view;
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
+    // TODO: only do this in debug mode
     CreateDebugConsole();
 
     const wchar_t CLASS_NAME[]  = L"Sample Window Class";
 
-    HRESULT hr = d2state.InitializeFactory();
+    HRESULT hr = d2state.CreateDeviceIndependentResources();
 
     if (FAILED(hr)) {
-        MessageBox(NULL, L"Failed to Create the D2D1 Factory. Exiting program", L"Direct2D Error", 0);
+        MessageBox(NULL, L"Failed to Create the D2D1 Device Independent Resources. Exiting program", L"Direct2D Error", 0);
         return 2;
     }
 

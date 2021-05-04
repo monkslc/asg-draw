@@ -1,28 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Creator: CorelDRAW 2020 (64-Bit) -->
-<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="10.0093in" height="14.3963in" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
-viewBox="0 0 3155.22 4538.12"
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="16.7877in" height="14.3963in" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 28156.55 24145.57"
  xmlns:xlink="http://www.w3.org/1999/xlink"
  xmlns:xodm="http://www.corel.com/coreldraw/odm/2003">
  <defs>
   <style type="text/css">
    <![CDATA[
-    .str0 {stroke:#373435;stroke-width:2.19;stroke-miterlimit:2.61313}
+    .str0 {stroke:#373435;stroke-width:11.65;stroke-miterlimit:2.61313}
     .fil0 {fill:none}
+    .fil1 {fill:#373435}
+    .fnt1 {font-weight:normal;font-size:396.88px;font-family:'CA Compliant Braille 060'}
+    .fnt0 {font-weight:normal;font-size:1347.21px;font-family:'Arial'}
    ]]>
   </style>
  </defs>
  <g id="Layer_x0020_1">
   <metadata id="CorelCorpID_0Corel-Layer"/>
-  <rect class="fil0 str0" x="730.95" y="598.02" width="1891.37" height="1260.91"/>
-  <rect class="fil0 str0" x="1.85" y="1.09" width="3152.28" height="3152.28"/>
-  <rect class="fil0 str0" x="1.85" y="1858.94" width="729.09" height="1294.44"/>
-  <rect class="fil0 str0" x="1033.79" y="869.21" width="400.6" height="188.81"/>
-  <rect class="fil0 str0" x="1902.3" y="836.37" width="462.99" height="252.84"/>
-  <rect class="fil0 str0" x="1138.86" y="1376.53" width="1210.02" height="292.24"/>
-  <rect class="fil0 str0" x="2622.31" y="598.02" width="531.82" height="2555.35"/>
-  <rect class="fil0 str0" x="1.09" y="3545.37" width="1837.19" height="991.65"/>
-  <rect class="fil0 str0" x="2107.54" y="3545.37" width="1045.83" height="932.55"/>
+  <rect class="fil0 str0" x="3889.12" y="3181.86" width="10063.24" height="6708.81"/>
+  <rect class="fil0 str0" x="9.87" y="5.83" width="16772.04" height="16772.04"/>
+  <rect class="fil0 str0" x="9.87" y="9890.72" width="3879.2" height="6887.21"/>
+  <rect class="fil0 str0" x="5500.42" y="4624.77" width="2131.44" height="1004.58"/>
+  <rect class="fil0 str0" x="10121.42" y="4450.04" width="2463.39" height="1345.26"/>
+  <rect class="fil0 str0" x="6059.45" y="7324.02" width="6438.04" height="1554.89"/>
+  <rect class="fil0 str0" x="13952.31" y="3181.87" width="2829.6" height="13596.02"/>
+  <rect class="fil0 str0" x="5.83" y="18863.56" width="9774.97" height="5276.18"/>
+  <rect class="fil0 str0" x="11213.42" y="18863.56" width="5564.45" height="4961.73"/>
+  <text x="19107.29" y="6016.63"  class="fil1 fnt0">Look at the sky</text>
+  <text x="21358.58" y="7484.56"  class="fil1 fnt1">Look at the sky</text>
  </g>
 </svg>

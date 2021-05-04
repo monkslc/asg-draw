@@ -4,10 +4,7 @@
 #include "pugixml.hpp"
 
 #include "sviggy.hpp"
-
-char* FindChar(char *str, char ch);
-char* SkipChar(char *str, char ch);
-float RoundFloatingInput(float x);
+#include "utils.hpp"
 
 class ViewPort {
     public:
