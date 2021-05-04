@@ -1,33 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Creator: CorelDRAW 2020 (64-Bit) -->
-<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="16.7877in" height="14.3963in" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
-viewBox="0 0 28156.55 24145.57"
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="8.5in" height="11in" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 8500 11000"
  xmlns:xlink="http://www.w3.org/1999/xlink"
  xmlns:xodm="http://www.corel.com/coreldraw/odm/2003">
  <defs>
   <style type="text/css">
    <![CDATA[
-    .str0 {stroke:#373435;stroke-width:11.65;stroke-miterlimit:2.61313}
+    .str0 {stroke:#373435;stroke-width:6.95;stroke-miterlimit:2.61313}
+    .str2 {stroke:#FEFEFE;stroke-width:3;stroke-miterlimit:2.61313}
+    .str3 {stroke:#373435;stroke-width:3;stroke-miterlimit:2.61313}
+    .str1 {stroke:#373435;stroke-width:3;stroke-miterlimit:2.61313}
     .fil0 {fill:none}
+    .fil5 {fill:#FEFEFE}
+    .fil3 {fill:#FEFEFE}
     .fil1 {fill:#373435}
-    .fnt1 {font-weight:normal;font-size:396.88px;font-family:'CA Compliant Braille 060'}
-    .fnt0 {font-weight:normal;font-size:1347.21px;font-family:'Arial'}
+    .fil4 {fill:#836948}
+    .fil2 {fill:#836948;fill-rule:nonzero}
+    .fnt3 {font-weight:normal;font-size:222.22px;font-family:'Arial'}
+    .fnt2 {font-weight:normal;font-size:333.33px;font-family:'Arial'}
+    .fnt1 {font-weight:normal;font-size:400px;font-family:'CA Compliant Braille 060'}
+    .fnt0 {font-weight:normal;font-size:803.25px;font-family:'Arial'}
+    .fnt4 {font-weight:normal;font-size:874.12px;font-family:'Futura Md BT'}
    ]]>
   </style>
  </defs>
  <g id="Layer_x0020_1">
   <metadata id="CorelCorpID_0Corel-Layer"/>
-  <rect class="fil0 str0" x="3889.12" y="3181.86" width="10063.24" height="6708.81"/>
-  <rect class="fil0 str0" x="9.87" y="5.83" width="16772.04" height="16772.04"/>
-  <rect class="fil0 str0" x="9.87" y="9890.72" width="3879.2" height="6887.21"/>
-  <rect class="fil0 str0" x="5500.42" y="4624.77" width="2131.44" height="1004.58"/>
-  <rect class="fil0 str0" x="10121.42" y="4450.04" width="2463.39" height="1345.26"/>
-  <rect class="fil0 str0" x="6059.45" y="7324.02" width="6438.04" height="1554.89"/>
-  <rect class="fil0 str0" x="13952.31" y="3181.87" width="2829.6" height="13596.02"/>
-  <rect class="fil0 str0" x="5.83" y="18863.56" width="9774.97" height="5276.18"/>
-  <rect class="fil0 str0" x="11213.42" y="18863.56" width="5564.45" height="4961.73"/>
-  <text x="19107.29" y="6016.63"  class="fil1 fnt0">Look at the sky</text>
-  <text x="21358.58" y="7484.56"  class="fil1 fnt1">Look at the sky</text>
+  <rect class="fil0 str0" x="1564.14" y="198.96" width="5999.99" height="3999.98"/>
+  <rect class="fil0 str0" x="-748.78" y="-1694.68" width="9999.97" height="9999.97"/>
+  <rect class="fil0 str0" x="-748.78" y="4198.97" width="2312.89" height="4106.35"/>
+  <rect class="fil0 str0" x="2524.84" y="1059.26" width="1270.82" height="598.96"/>
+  <rect class="fil0 str0" x="5280.01" y="955.08" width="1468.74" height="802.08"/>
+  <rect class="fil0 str0" x="2858.15" y="2668.63" width="3838.54" height="927.07"/>
+  <rect class="fil0 str0" x="7564.1" y="198.96" width="1687.09" height="8106.33"/>
+  <rect class="fil0 str0" x="-751.19" y="9548.83" width="5828.11" height="3145.81"/>
+  <rect class="fil0 str0" x="5931.09" y="9548.84" width="3317.69" height="2958.33"/>
+  <text x="10637.65" y="1889.13"  class="fil1 fnt0">Look at the sky</text>
+  <polygon class="fil2 str1" points="18896.28,14514.53 24896.28,14514.53 24896.28,23514.53 18896.28,23514.53 "/>
+  <text x="20144.09" y="22814.52"  class="fil0 str2 fnt1">/aff re/room</text>
+  <g id="_2288920997600">
+   <g>
+    <path class="fil3" d="M20353.76 16263.57c226.05,0 358.39,186.26 392.59,288.87l277.6 912.74c55.52,196.3 -194.31,277.61 -253.8,86.24l-249.83 -837.96 -113.53 0 433.09 1490.68 -399.07 0 0 1162.06c0,198.28 -298.04,197.28 -298.04,0l0 -1169.65 -121.44 0 0.13 1168.15c0,199.78 -299.3,199.78 -299.3,0l-0.14 -1160.57 -400.14 0 429.64 -1490.68 -108.02 0 -249.91 840.96c-59.48,183.41 -311.31,108.06 -253.69,-88.36l277.47 -913.62c29.75,-104.17 161.51,-288.87 389.59,-288.87l546.8 0z"/>
+    <path class="fil3" d="M20081.69 16161.51c178.63,0 323.48,-144.83 323.48,-323.48 0,-178.66 -144.85,-323.5 -323.48,-323.5 -178.68,0 -323.5,144.83 -323.5,323.5 0,178.65 144.82,323.48 323.5,323.48z"/>
+   </g>
+   <g>
+    <path class="fil3" d="M21968.21 16161.51c178.63,0 323.48,-144.83 323.48,-323.48 0,-178.66 -144.85,-323.5 -323.48,-323.5 -178.68,0 -323.5,144.83 -323.5,323.5 0,178.65 144.82,323.48 323.5,323.48z"/>
+    <path class="fil3" d="M21545.04 19333.17c0,100.16 81.19,181.36 181.35,181.36 100.16,0 181.37,-81.2 181.37,-181.36l0.13 -1521.51 121.55 0 -0.48 1521.51c0,100.16 81.2,181.36 181.35,181.36 100.19,0 181.38,-81.2 181.38,-181.36l0.66 -2623.21 120.35 0 0 966.68c0,194.56 253.63,194.56 253.12,0l0 -987.31c0,-214.86 -166.86,-425.33 -418.4,-425.33l-765.77 -0.46c-229.07,0 -413.35,186.85 -413.35,419.87l0 993.24c0,193.1 255.09,193.1 255.09,0l0 -966.68 121.94 0 -0.29 2623.21z"/>
+   </g>
+   <g>
+    <circle class="fil3" cx="24370.2" cy="17261.16" r="246.62"/>
+    <path class="fil3" d="M23957.54 19366.26c-126.66,93.18 -283.06,148.28 -452.33,148.28 -422,0 -764.23,-342.23 -764.23,-764.23 3.43,-171.62 56.61,-330.04 152.15,-457.62l210.72 212.53c-43.69,71.38 -68.88,155.29 -68.88,245.09 0,259.67 210.58,470.24 470.24,470.24 88.35,0 171.01,-24.4 241.63,-66.8l210.69 212.51z"/>
+    <path class="fil3" d="M24052.28 19268.79c105.65,-149.11 168.83,-284.94 177.6,-468.82 9.66,-202.75 -59.38,-376.15 -60.95,-376.16 -1.58,-0.01 179.57,0.5 179.94,-4.59 0.84,-11.93 -18.47,372.79 -34.54,620.79 -6.22,95.93 114.94,114.19 138.74,115.83 23.81,1.65 150.6,1.93 158.35,-139.02 10.71,-194.88 62.5,-587.6 46.8,-799.87 -3.88,-52.46 -49.86,-78.72 -69.33,-83.26 -99.19,-23.11 -396.6,5.78 -580.52,5.78 -6.42,0 -0.84,-7.46 2.89,-16.17 22.92,-53.46 270.89,-308.88 301.91,-358.5 5.92,-9.47 36.16,-56.24 25.18,-88.81 -10.37,-30.78 -42.94,-64.34 -57.56,-72.14 -159.15,-84.81 -674.54,-467.24 -792.94,-428.57 -31.76,10.37 -417.83,358.01 -436.48,381.79 -25.95,33.07 -29.7,94.87 -3.78,133.63 32.3,48.28 101.59,71.83 175.14,47.65 92.82,-30.52 289.44,-256.11 305.15,-247.22 41.13,23.27 197,97.82 187.93,111.28 -71.9,106.58 -239.8,325.63 -338.31,412.15 -25.82,22.68 -29.3,7.2 -108.18,33.3 -78.88,26.09 -202.09,92.43 -309.44,175.86l216.26 206.89c70.59,-44.95 154.04,-71.64 243.82,-73.25 259.62,-4.64 473.93,202.15 478.57,461.77 1.57,88.34 -21.34,171.42 -62.47,242.79l216.24 206.86z"/>
+   </g>
+  </g>
+  <path class="fil4 str3" d="M25396.28 22545.79l0 31.25c-17.26,0 -31.25,-14 -31.25,-31.25 0,-17.26 14,-31.25 31.25,-31.25l0 31.25zm0 93.74l0 31.25c-17.26,0 -31.25,-14 -31.25,-31.25 0,-17.26 14,-31.25 31.25,-31.25l0 31.25zm0 93.74l0 31.25c-17.26,0 -31.25,-14 -31.25,-31.25 0,-17.26 14,-31.25 31.25,-31.25l0 31.25z"/>
+  <line class="fil0 str3" x1="18896.28" y1="14421.61" x2="18896.28" y2= "13947.97" />
+  <line class="fil0 str3" x1="24896.27" y1="14421.61" x2="24896.27" y2= "13947.97" />
+  <line class="fil0 str3" x1="18896.28" y1="14014.53" x2="24896.27" y2= "14014.53" />
+  <line class="fil0 str3" x1="18817.79" y1="14514.53" x2="17559.15" y2= "14514.53" />
+  <line class="fil0 str3" x1="18817.79" y1="23514.52" x2="17559.15" y2= "23514.52" />
+  <line class="fil0 str3" x1="18396.28" y1="14514.53" x2="18396.28" y2= "23514.52" />
+  <line class="fil0 str3" x1="17646.28" y1="23514.52" x2="17646.28" y2= "14514.53" />
+  <line class="fil0 str3" x1="18188.47" y1="21514.53" x2="18643.72" y2= "21514.53" />
+  <line class="fil0 str3" x1="18188.47" y1="20514.53" x2="18643.72" y2= "20514.53" />
+  <line class="fil0 str3" x1="18188.47" y1="15514.54" x2="18643.72" y2= "15514.54" />
+  <line class="fil0 str3" x1="18188.47" y1="19514.53" x2="18643.72" y2= "19514.53" />
+  <line class="fil0 str3" x1="18188.47" y1="22139.53" x2="18643.72" y2= "22139.53" />
+  <line class="fil0 str3" x1="18188.47" y1="21139.53" x2="18643.72" y2= "21139.53" />
+  <line class="fil0 str3" x1="18188.47" y1="22514.53" x2="18643.72" y2= "22514.53" />
+  <line class="fil0 str3" x1="18188.47" y1="22764.53" x2="18643.72" y2= "22764.53" />
+  <text x="17302.33" y="19133.02"  class="fil1 fnt2">9”</text>
+  <text x="21748.08" y="13947.97"  class="fil1 fnt2">6”</text>
+  <text x="17960.82" y="21913.45"  class="fil1 fnt3">5/8”</text>
+  <text x="17960.82" y="20913.45"  class="fil1 fnt3">5/8”</text>
+  <text x="18146.15" y="20096.22"  class="fil1 fnt3">1”</text>
+  <text x="18146.15" y="15096.22"  class="fil1 fnt3">1”</text>
+  <text x="18146.15" y="17594.86"  class="fil1 fnt3">4”</text>
+  <text x="17960.82" y="22406.51"  class="fil1 fnt3">3/8”</text>
+  <text x="17960.82" y="21406.51"  class="fil1 fnt3">3/8”</text>
+  <text x="17960.82" y="23219.01"  class="fil1 fnt3">3/4”</text>
+  <text x="17960.82" y="22719.01"  class="fil1 fnt3">1/4”</text>
+  <rect class="fil4 str3" x="25396.28" y="14514.53" width="125" height="9000"/>
+  <rect class="fil4 str3" x="25365.03" y="21514.53" width="31.24" height="625"/>
+  <rect class="fil4 str3" x="25365.03" y="20514.53" width="31.24" height="625"/>
+  <rect class="fil4 str3" x="25365.03" y="15514.53" width="31.24" height="4000"/>
+  <text x="19546.57" y="22139.53"  class="fil5 fnt4">RESTROOM</text>
+  <text x="20718.92" y="21139.53"  class="fil5 fnt4">STAFF</text>
+  <polygon class="fil2 str1" points="35133.36,22971.93 41133.36,22971.93 41133.36,14971.93 35133.36,14971.93 "/>
+  <text x="36805.94" y="21596.93"  class="fil5 fnt4">STAIRS</text>
+  <text x="37432.57" y="22271.93"  class="fil0 str2 fnt1">/airs</text>
+  <polygon class="fil3" points="37216.72,18805.27 37216.72,19971.94 35641.78,19971.94 35641.78,19471.93 36716.73,19471.93 36716.73,18305.26 37883.38,18305.26 37883.38,17138.6 39050.01,17138.6 39050.01,15971.93 40624.95,15971.93 40624.95,16471.93 39550,16471.93 39550,17638.6 38383.36,17638.6 38383.36,18805.27 "/>
  </g>
 </svg>

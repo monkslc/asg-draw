@@ -7,6 +7,15 @@
 
 constexpr float kPixelsPerInch = 50;
 
+class Vec2 {
+    public:
+    float x,y;
+    Vec2(float x, float y) : x(x), y(y) {};
+    D2D1_POINT_2F D2Point() {
+        return D2D1::Point2F(x, y);
+    };
+};
+
 struct Position {
     float x,y;
 };
@@ -24,10 +33,18 @@ class Text {
     Text(float x, float y, std::string text) : x(x), y(y), text(text) {};
 };
 
+class Line {
+    public:
+    Vec2 start, end;
+    Line(Vec2 start, Vec2 end) : start(start), end(end) {};
+    Line(float x1, float y1, float x2, float y2) : start(Vec2(x1, y1)), end(Vec2(x2, y2)) {};
+};
+
 class Document {
     public:
     std::vector<Rect> shapes;
     std::vector<Text> texts;
+    std::vector<Line> lines;
     Document() {};
 };
 
@@ -194,16 +211,8 @@ class D2State {
         int width = static_cast<int>(rtSize.width);
         int height = static_cast<int>(rtSize.height);
 
-        for (auto &shape : doc->shapes) {
-            D2D1_RECT_F rectangle = D2D1::RectF(
-                shape.x,
-                shape.y,
-                (shape.x + shape.width),
-                (shape.y + shape.height)
-            );
-            this->renderTarget->DrawRectangle(&rectangle, this->blackBrush, 0.003);
-        }
-
+        this->RenderRects(doc, view);
+        this->RenderLines(doc, view);
         this->RenderText(doc, view);
 
         HRESULT hr = this->renderTarget->EndDraw();
@@ -213,6 +222,24 @@ class D2State {
 
         return hr;
 
+    }
+
+    void RenderRects(Document *doc, View *view) {
+        for (auto &shape : doc->shapes) {
+            D2D1_RECT_F rectangle = D2D1::RectF(
+                shape.x,
+                shape.y,
+                (shape.x + shape.width),
+                (shape.y + shape.height)
+            );
+            this->renderTarget->DrawRectangle(&rectangle, this->blackBrush, 0.003);
+        }
+    }
+
+    void RenderLines(Document *doc, View *view) {
+        for (auto &line : doc->lines) {
+            this->renderTarget->DrawLine(line.start.D2Point(), line.end.D2Point(), this->blackBrush, 0.003, NULL);
+        }
     }
 
     void RenderText(Document *doc, View *view) {

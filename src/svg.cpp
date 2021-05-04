@@ -44,6 +44,17 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
             float x = RoundFloatingInput(std::stof(node->attribute("x").value()) / viewport->uupix);
             float y = RoundFloatingInput(std::stof(node->attribute("y").value()) / viewport->uupiy);
             doc->texts.emplace_back(x, y, std::string(node->text().get()));
+            continue;
+        }
+
+
+        if (strcmp(node->name(), "line") == 0) {
+            float x1 = RoundFloatingInput(node->attribute("x1").as_float() / viewport->uupix);
+            float y1 = RoundFloatingInput(node->attribute("y1").as_float() / viewport->uupiy);
+            float x2 = RoundFloatingInput(node->attribute("x2").as_float() / viewport->uupix);
+            float y2 = RoundFloatingInput(node->attribute("y2").as_float() / viewport->uupiy);
+            doc->lines.emplace_back(x1, y1, x2, y2);
+            continue;
         }
 
     }
