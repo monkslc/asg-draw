@@ -4,6 +4,8 @@
 #include "sviggy.hpp"
 #include "utils.hpp"
 
+#define TAGCMP(node, type) strcmp(node->name(), type) == 0
+
 void LoadSVGFile(char *file, Document *doc) {
     pugi::xml_document xml;
     pugi::xml_parse_result result = xml.load_file(file);
@@ -17,38 +19,35 @@ void LoadSVGFile(char *file, Document *doc) {
 
 void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_node_iterator> nodes, Document *doc) {
     for (pugi::xml_node_iterator node : nodes) {
-        if (strcmp(node->name(), "defs") == 0) {
-            continue;
-        }
 
-        if (strcmp(node->name(), "metadata") == 0) {
-            continue;
-        }
-
-        if (strcmp(node->name(), "g") == 0) {
+        if (TAGCMP(node, "g")) {
             AddNodesToDocument(viewport, node->children(), doc);
             continue;
         }
 
-        if (strcmp(node->name(), "rect") == 0) {
-            float x = RoundFloatingInput(std::stof(node->attribute("x").value()) / viewport->uupix);
-            float y = RoundFloatingInput(std::stof(node->attribute("y").value()) / viewport->uupiy);
-            float w = RoundFloatingInput(std::stof(node->attribute("width").value()) / viewport->uupix);
-            float h = RoundFloatingInput(std::stof(node->attribute("height").value()) / viewport->uupiy);
+        if (TAGCMP(node, "rect")) {
+            float x = RoundFloatingInput(node->attribute("x"     ).as_float() / viewport->uupix);
+            float y = RoundFloatingInput(node->attribute("y"     ).as_float() / viewport->uupiy);
+            float w = RoundFloatingInput(node->attribute("width" ).as_float() / viewport->uupix);
+            float h = RoundFloatingInput(node->attribute("height").as_float() / viewport->uupiy);
+
+            printf("Rect** x: %.9f y: %.9f w: %.9f h %.9f\n", x, y, w, h);
 
             doc->shapes.emplace_back(x, y, w, h);
             continue;
         }
 
-        if (strcmp(node->name(), "text") == 0) {
-            float x = RoundFloatingInput(std::stof(node->attribute("x").value()) / viewport->uupix);
-            float y = RoundFloatingInput(std::stof(node->attribute("y").value()) / viewport->uupiy);
+        if (TAGCMP(node, "text")) {
+            float x = RoundFloatingInput(node->attribute("x").as_float() / viewport->uupix);
+            float y = RoundFloatingInput(node->attribute("y").as_float() / viewport->uupiy);
+
+            printf("Text** x: %.9f y: %.9f\n", x, y);
+
             doc->texts.emplace_back(x, y, std::string(node->text().get()));
             continue;
         }
 
-
-        if (strcmp(node->name(), "line") == 0) {
+        if (TAGCMP(node, "line")) {
             float x1 = RoundFloatingInput(node->attribute("x1").as_float() / viewport->uupix);
             float y1 = RoundFloatingInput(node->attribute("y1").as_float() / viewport->uupiy);
             float x2 = RoundFloatingInput(node->attribute("x2").as_float() / viewport->uupix);
@@ -56,6 +55,5 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
             doc->lines.emplace_back(x1, y1, x2, y2);
             continue;
         }
-
     }
 }
