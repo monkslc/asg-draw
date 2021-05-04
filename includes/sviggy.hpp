@@ -5,6 +5,8 @@
 #include <d2d1.h>
 #include <vector>
 
+#include <system_error>
+
 constexpr float kPixelsPerInch = 50;
 
 class Vec2 {
@@ -40,11 +42,19 @@ class Line {
     Line(float x1, float y1, float x2, float y2) : start(Vec2(x1, y1)), end(Vec2(x2, y2)) {};
 };
 
+class Poly {
+    public:
+    std::vector<Vec2> points;
+    Poly() {};
+    Poly(std::vector<Vec2> points) : points(points) {};
+};
+
 class Document {
     public:
     std::vector<Rect> shapes;
     std::vector<Text> texts;
     std::vector<Line> lines;
+    std::vector<Poly> polygons;
     Document() {};
 };
 
@@ -81,11 +91,14 @@ class D2State {
     ID2D1Factory* factory;
     IDWriteFactory *write_factory;
     IDWriteTextFormat *text_format;
+    ID2D1PathGeometry *geometry;
+    ID2D1GeometrySink *geometry_sink;
 
     ID2D1HwndRenderTarget* renderTarget;
     ID2D1SolidColorBrush* lightSlateGrayBrush;
     ID2D1SolidColorBrush* cornflowerBlueBrush;
     ID2D1SolidColorBrush* blackBrush;
+    ID2D1SolidColorBrush* debugBrush;
     HRESULT CreateDeviceIndependentResources() {
         HRESULT hr;
         hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &this->factory);
@@ -121,6 +134,16 @@ class D2State {
 
         text_format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
         text_format->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+
+        hr = this->factory->CreatePathGeometry(&this->geometry);
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+        hr = this->geometry->Open(&this->geometry_sink);
+        if (FAILED(hr)) {
+            return hr;
+        }
 
         return hr;
     }
@@ -173,6 +196,15 @@ class D2State {
             &blackBrush
         );
 
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+        renderTarget->CreateSolidColorBrush(
+            D2D1::ColorF(D2D1::ColorF::Red),
+            &debugBrush
+        );
+
         return hr;
     }
 
@@ -213,15 +245,17 @@ class D2State {
 
         this->RenderRects(doc, view);
         this->RenderLines(doc, view);
+        this->RenderPolygons(doc, view);
         this->RenderText(doc, view);
 
         HRESULT hr = this->renderTarget->EndDraw();
         if (hr == D2DERR_RECREATE_TARGET) {
             this->DiscardDeviceResources();
+        } else if (FAILED(hr)) {
+            printf("Drawing Failed%s\n", std::system_category().message(hr).c_str());
         }
 
         return hr;
-
     }
 
     void RenderRects(Document *doc, View *view) {
@@ -240,6 +274,26 @@ class D2State {
         for (auto &line : doc->lines) {
             this->renderTarget->DrawLine(line.start.D2Point(), line.end.D2Point(), this->blackBrush, 0.003, NULL);
         }
+    }
+
+    void RenderPolygons(Document *doc, View *view) {
+        this->geometry_sink->SetFillMode(D2D1_FILL_MODE_WINDING);
+        for (auto &poly : doc->polygons) {
+            if (poly.points.empty()) continue;
+
+            Vec2 start = poly.points[0];
+            this->geometry_sink->BeginFigure(start.D2Point(), D2D1_FIGURE_BEGIN_FILLED);
+
+            for (auto i=1; i<poly.points.size(); i++) {
+                Vec2 next = poly.points[i];
+                this->geometry_sink->AddLine(next.D2Point());
+            }
+
+            this->geometry_sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+        }
+
+        this->geometry_sink->Close();
+        this->renderTarget->DrawGeometry(this->geometry, this->blackBrush, 0.003);
     }
 
     void RenderText(Document *doc, View *view) {

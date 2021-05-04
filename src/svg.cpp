@@ -5,6 +5,7 @@
 #include "utils.hpp"
 
 #define TAGCMP(node, type) strcmp(node->name(), type) == 0
+#define IS_DIGIT(c) (c >= '0' && c <= '9')
 
 void LoadSVGFile(char *file, Document *doc) {
     pugi::xml_document xml;
@@ -55,5 +56,33 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
             doc->lines.emplace_back(x1, y1, x2, y2);
             continue;
         }
+
+        if (TAGCMP(node, "polygon")) {
+            auto points = std::vector<Vec2>();
+            const char *points_str = node->attribute("points").value();
+            char *iter = (char *)points_str;
+            while (*iter != NULL) {
+               char *end;
+
+               float x = RoundFloatingInput(std::strtof(iter, &end));
+               while (*end && !IsFloatingPointChar(*end)) end++;
+               iter = end;
+
+               float y = RoundFloatingInput(std::strtof(iter, &end));
+               while (*end && !IsFloatingPointChar(*end)) end++;
+               iter = end;
+
+                points.emplace_back(x / viewport->uupix, y / viewport->uupiy);
+            }
+
+            doc->polygons.emplace_back(points);
+        }
     }
+}
+
+bool IsFloatingPointChar(char c) {
+    return IS_DIGIT(c) ||
+           c == '+'    ||
+           c == '-'    ||
+           c == '.';
 }

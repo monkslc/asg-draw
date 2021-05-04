@@ -31,5 +31,6 @@ class ViewPort {
 
 void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_node_iterator> nodes, Document *doc);
 void LoadSVGFile(char *file, Document *doc);
+bool IsFloatingPointChar(char c);
 
 #endif
