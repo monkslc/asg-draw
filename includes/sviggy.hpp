@@ -18,21 +18,59 @@ class Vec2 {
     };
 };
 
-struct Position {
-    float x,y;
-};
-
 class Rect {
     public:
-    float x, y, width, height;
-    Rect(float x, float y, float width, float height) : x(x), y(y), width(width), height(height) {};
+    Vec2 pos, size;
+    Rect(float x, float y, float width, float height) : pos(Vec2(x, y)), size(Vec2(width, height)) {};
+    Rect(Vec2 pos, Vec2 size) : pos(pos), size(size) {};
+
+    float X() {
+        return this->pos.x;
+    }
+
+    float Y() {
+        return this->pos.y;
+    }
+
+    float Width() {
+        return this->size.x;
+    }
+
+    float Height() {
+        return this->size.y;
+    }
+
+    float Left() {
+        return this->pos.x;
+    }
+
+    float Top() {
+        return this->pos.y;
+    }
+
+    float Right() {
+        return this->pos.x + this->size.x;
+    }
+
+    float Bottom() {
+        return this->pos.y + this->size.y;
+    }
 };
 
 class Text {
     public:
-    float x, y;
+    Vec2 pos;
     std::string text;
-    Text(float x, float y, std::string text) : x(x), y(y), text(text) {};
+    Text(float x, float y, std::string text) : pos(Vec2(x, y)), text(text) {};
+    Text(Vec2 pos, std::string text) : pos(pos), text(text) {};
+
+    float X() {
+        return this->pos.x;
+    }
+
+    float Y() {
+        return this->pos.y;
+    }
 };
 
 class Line {
@@ -69,21 +107,19 @@ class Document {
 
 class View {
     public:
-    float x = 0.0, y = 0.0, scale = 1.0;
-    View() {};
-    Position GetDocumentPosition(float screen_position_x, float screen_position_y) {
+    Vec2 pos;
+    float scale = 1.0;
+    View() : pos(Vec2(0.0f, 0.0f)) {};
+    Vec2 GetDocumentPosition(float screen_position_x, float screen_position_y) {
         D2D1::Matrix3x2F screen_to_document = this->GetTransformationMatrix();
         screen_to_document.Invert();
 
         D2D1_POINT_2F doc_position = screen_to_document.TransformPoint(D2D1_POINT_2F {screen_position_x, screen_position_y});
-        return Position {
-            doc_position.x,
-            doc_position.y,
-        };
+        return Vec2(doc_position.x, doc_position.y);
     }
 
     D2D1::Matrix3x2F GetTransformationMatrix() {
-        D2D1::Matrix3x2F translation_matrix = D2D1::Matrix3x2F::Translation(this->x, this->y);
+        D2D1::Matrix3x2F translation_matrix = D2D1::Matrix3x2F::Translation(this->pos.x, this->pos.y);
         D2D1::Matrix3x2F scale_matrix = D2D1::Matrix3x2F::Scale(
             this->scale * kPixelsPerInch,
             this->scale * kPixelsPerInch,
@@ -271,10 +307,10 @@ class D2State {
     void RenderRects(Document *doc, View *view) {
         for (auto &shape : doc->shapes) {
             D2D1_RECT_F rectangle = D2D1::RectF(
-                shape.x,
-                shape.y,
-                (shape.x + shape.width),
-                (shape.y + shape.height)
+                shape.Left(),
+                shape.Top(),
+                shape.Right(),
+                shape.Bottom()
             );
             this->renderTarget->DrawRectangle(&rectangle, this->blackBrush, 0.003);
         }
@@ -309,7 +345,7 @@ class D2State {
     void RenderCircles(Document *doc, View *view) {
         for (auto &circle : doc->circles) {
             D2D1_ELLIPSE ellipse = D2D1::Ellipse(circle.center.D2Point(), circle.radius, circle.radius);
-            this->renderTarget->DrawEllipse(ellipse, this->debugBrush, 0.003f, nullptr);
+            this->renderTarget->DrawEllipse(ellipse, this->blackBrush, 0.003f, nullptr);
         }
     }
 
@@ -322,7 +358,7 @@ class D2State {
                 this->text_format,
                 // TODO: not sure what to set for the right and bottom parameters
                 // Right now its 100 but this will break if we have something wider
-                D2D1::RectF(text.x, text.y, 100, 100),
+                D2D1::RectF(text.X(), text.Y(), 100, 100),
                 this->blackBrush
             );
         }

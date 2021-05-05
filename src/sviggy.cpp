@@ -92,7 +92,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         case WM_LBUTTONDOWN: {
             float screen_x = LOWORD(lParam);
             float screen_y = HIWORD(lParam);
-            Position p = view.GetDocumentPosition(screen_x, screen_y);
+            Vec2 p = view.GetDocumentPosition(screen_x, screen_y);
             doc.shapes.emplace_back(p.x, p.y, 10, 10);
             return 0;
         }
@@ -100,19 +100,19 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         case WM_KEYDOWN: {
             switch (wParam) {
                 case VK_LEFT:
-                    view.x += 10;
+                    view.pos.x += 10;
                     break;
 
                 case VK_RIGHT:
-                    view.x -= 10;
+                    view.pos.x -= 10;
                     break;
 
                 case VK_DOWN:
-                    view.y -= 10;
+                    view.pos.y -= 10;
                     break;
 
                 case VK_UP:
-                    view.y += 10;
+                    view.pos.y += 10;
                     break;
 
                 case VK_OEM_PLUS:
