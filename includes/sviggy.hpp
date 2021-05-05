@@ -10,6 +10,7 @@
 constexpr float kPixelsPerInch = 50;
 constexpr float kScaleDelta = 0.1;
 constexpr float kTranslationDelta = 0.125;
+constexpr float kHairline = 0.05;
 
 class Vec2 {
     public:
@@ -357,13 +358,13 @@ class D2State {
                 shape.Right(),
                 shape.Bottom()
             );
-            this->renderTarget->DrawRectangle(&rectangle, this->blackBrush, 0.003);
+            this->renderTarget->DrawRectangle(&rectangle, this->blackBrush, kHairline);
         }
     }
 
     void RenderLines(Document *doc, View *view) {
         for (auto &line : doc->lines) {
-            this->renderTarget->DrawLine(line.start.D2Point(), line.end.D2Point(), this->blackBrush, 0.003, NULL);
+            this->renderTarget->DrawLine(line.start.D2Point(), line.end.D2Point(), this->blackBrush, kHairline, NULL);
         }
     }
 
@@ -384,13 +385,13 @@ class D2State {
         }
 
         this->geometry_sink->Close();
-        this->renderTarget->DrawGeometry(this->geometry, this->blackBrush, 0.003);
+        this->renderTarget->DrawGeometry(this->geometry, this->blackBrush, kHairline);
     }
 
     void RenderCircles(Document *doc, View *view) {
         for (auto &circle : doc->circles) {
             D2D1_ELLIPSE ellipse = D2D1::Ellipse(circle.center.D2Point(), circle.radius, circle.radius);
-            this->renderTarget->DrawEllipse(ellipse, this->blackBrush, 0.003f, nullptr);
+            this->renderTarget->DrawEllipse(ellipse, this->blackBrush, kHairline, nullptr);
         }
     }
 

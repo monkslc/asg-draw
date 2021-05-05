@@ -158,7 +158,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             if (FLAGCMP(wParam, MK_LBUTTON)) {
                 Vec2 change = original_mouse - new_mouse;
                 view.start += change;
-                printf("View Start: %.9f %.9f\n", view.start.x, view.start.y);
             }
 
             return 0;
