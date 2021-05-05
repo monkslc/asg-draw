@@ -77,6 +77,14 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
 
             doc->polygons.emplace_back(points);
         }
+
+        if (TAGCMP(node, "circle")) {
+            float x = RoundFloatingInput(node->attribute("cx").as_float() / viewport->uupix);
+            float y = RoundFloatingInput(node->attribute("cy").as_float() / viewport->uupiy);
+            float r = RoundFloatingInput(node->attribute("r" ).as_float() / viewport->uupix);
+
+            doc->circles.emplace_back(x, y, r);
+        }
     }
 }
 

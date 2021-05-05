@@ -49,12 +49,21 @@ class Poly {
     Poly(std::vector<Vec2> points) : points(points) {};
 };
 
+class Circle {
+    public:
+    Vec2 center;
+    float radius;
+    Circle(Vec2 center, float radius) : center(center), radius(radius) {};
+    Circle(float x, float y, float radius) : center(Vec2(x, y)), radius(radius) {};
+};
+
 class Document {
     public:
     std::vector<Rect> shapes;
     std::vector<Text> texts;
     std::vector<Line> lines;
     std::vector<Poly> polygons;
+    std::vector<Circle> circles;
     Document() {};
 };
 
@@ -246,6 +255,7 @@ class D2State {
         this->RenderRects(doc, view);
         this->RenderLines(doc, view);
         this->RenderPolygons(doc, view);
+        this->RenderCircles(doc, view);
         this->RenderText(doc, view);
 
         HRESULT hr = this->renderTarget->EndDraw();
@@ -294,6 +304,13 @@ class D2State {
 
         this->geometry_sink->Close();
         this->renderTarget->DrawGeometry(this->geometry, this->blackBrush, 0.003);
+    }
+
+    void RenderCircles(Document *doc, View *view) {
+        for (auto &circle : doc->circles) {
+            D2D1_ELLIPSE ellipse = D2D1::Ellipse(circle.center.D2Point(), circle.radius, circle.radius);
+            this->renderTarget->DrawEllipse(ellipse, this->debugBrush, 0.003f, nullptr);
+        }
     }
 
     void RenderText(Document *doc, View *view) {
