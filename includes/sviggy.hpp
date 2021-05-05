@@ -8,14 +8,39 @@
 #include <system_error>
 
 constexpr float kPixelsPerInch = 50;
+constexpr float kScaleDelta = 0.1;
+constexpr float kTranslationDelta = 0.125;
 
 class Vec2 {
     public:
     float x,y;
     Vec2(float x, float y) : x(x), y(y) {};
+    Vec2(D2D1_POINT_2F p) : x(p.x), y(p.y) {};
     D2D1_POINT_2F D2Point() {
         return D2D1::Point2F(x, y);
     };
+
+    Vec2 operator+(Vec2 &b) {
+        return Vec2(this->x + b.x, this->y + b.y);
+    }
+
+    Vec2& operator+=(Vec2 &b) {
+        this->x += b.x;
+        this->y += b.y;
+
+        return *this;
+    }
+
+    Vec2 operator-(Vec2 &b) {
+        return Vec2(this->x - b.x, this->y - b.y);
+    }
+
+    Vec2& operator-=(Vec2 &b) {
+        this->x -= b.x;
+        this->y -= b.y;
+
+        return *this;
+    }
 };
 
 class Rect {
@@ -107,27 +132,47 @@ class Document {
 
 class View {
     public:
-    Vec2 pos;
+    Vec2 start;
+    Vec2 mouse_pos_screen;
     float scale = 1.0;
-    View() : pos(Vec2(0.0f, 0.0f)) {};
-    Vec2 GetDocumentPosition(float screen_position_x, float screen_position_y) {
-        D2D1::Matrix3x2F screen_to_document = this->GetTransformationMatrix();
-        screen_to_document.Invert();
-
-        D2D1_POINT_2F doc_position = screen_to_document.TransformPoint(D2D1_POINT_2F {screen_position_x, screen_position_y});
-        return Vec2(doc_position.x, doc_position.y);
+    View() : start(Vec2(0.0f, 0.0f)), mouse_pos_screen(Vec2(0.0f, 0.0f)) {};
+    Vec2 GetDocumentPosition(Vec2 screen_pos) {
+        return this->ScreenToDocumentMat().TransformPoint(screen_pos.D2Point());
     }
 
-    D2D1::Matrix3x2F GetTransformationMatrix() {
-        D2D1::Matrix3x2F translation_matrix = D2D1::Matrix3x2F::Translation(this->pos.x, this->pos.y);
+    Vec2 MousePos() {
+        return this->GetDocumentPosition(this->mouse_pos_screen);
+    }
+
+    void Scale(bool in) {
+        // We preserve the mouse document position when scaling in and out
+        Vec2 original_mouse_pos = this->MousePos();
+
+        float delta = in ? 1 + kScaleDelta : 1-kScaleDelta;
+        this->scale *= delta;
+
+        Vec2 mouse_after_scale = this->MousePos();
+        Vec2 mouse_change = original_mouse_pos - mouse_after_scale;
+
+        this->start += mouse_change;
+    }
+
+    D2D1::Matrix3x2F DocumentToScreenMat() {
         D2D1::Matrix3x2F scale_matrix = D2D1::Matrix3x2F::Scale(
             this->scale * kPixelsPerInch,
             this->scale * kPixelsPerInch,
             D2D1_POINT_2F()
         );
 
-        return scale_matrix * translation_matrix;
+        D2D1::Matrix3x2F translation_matrix = D2D1::Matrix3x2F::Translation(-this->start.x, -this->start.y);
 
+        return translation_matrix * scale_matrix;
+    }
+
+    D2D1::Matrix3x2F ScreenToDocumentMat() {
+        D2D1::Matrix3x2F mat = this->DocumentToScreenMat();
+        mat.Invert();
+        return mat;
     }
 };
 
@@ -282,7 +327,7 @@ class D2State {
 
         this->RenderGridLines();
 
-        this->renderTarget->SetTransform(view->GetTransformationMatrix());
+        this->renderTarget->SetTransform(view->DocumentToScreenMat());
 
         D2D1_SIZE_F rtSize = this->renderTarget->GetSize();
         int width = static_cast<int>(rtSize.width);

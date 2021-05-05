@@ -9,6 +9,7 @@
 #include <d2d1.h>
 #include <vector>
 #include <windows.h>
+#include <windowsx.h>
 
 #include "pugixml.hpp"
 
@@ -18,6 +19,8 @@
 D2State d2state;
 Document doc;
 View view;
+
+#define FLAGCMP(num, flag) num & flag
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
     // TODO: only do this in debug mode
@@ -89,10 +92,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             return 0;
         }
 
+        case WM_PAINT: {
+            d2state.CreateDeviceResources(hwnd);
+            d2state.Render(&doc, &view);
+            return 0;
+        }
+
         case WM_LBUTTONDOWN: {
             float screen_x = LOWORD(lParam);
             float screen_y = HIWORD(lParam);
-            Vec2 p = view.GetDocumentPosition(screen_x, screen_y);
+            Vec2 p = view.GetDocumentPosition(Vec2(screen_x, screen_y));
+
             doc.shapes.emplace_back(p.x, p.y, 10, 10);
             return 0;
         }
@@ -100,27 +110,27 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         case WM_KEYDOWN: {
             switch (wParam) {
                 case VK_LEFT:
-                    view.pos.x += 10;
+                    view.start.x -= kTranslationDelta;
                     break;
 
                 case VK_RIGHT:
-                    view.pos.x -= 10;
+                    view.start.x += kTranslationDelta;
                     break;
 
                 case VK_DOWN:
-                    view.pos.y -= 10;
+                    view.start.y += kTranslationDelta;
                     break;
 
                 case VK_UP:
-                    view.pos.y += 10;
+                    view.start.y -= kTranslationDelta;
                     break;
 
                 case VK_OEM_PLUS:
-                    view.scale += 0.1;
+                    view.Scale(true);
                     break;
 
                 case VK_OEM_MINUS:
-                    view.scale -= 0.1;
+                    view.Scale(false);
                     break;
 
                 default:
@@ -129,11 +139,31 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             return 0;
         }
 
-        case WM_PAINT: {
-            d2state.CreateDeviceResources(hwnd);
-            d2state.Render(&doc, &view);
+        case WM_MOUSEWHEEL: {
+            bool scroll_direction = GET_WHEEL_DELTA_WPARAM(wParam) > 0;
+            view.Scale(scroll_direction);
             return 0;
         }
+
+        case WM_MOUSEMOVE: {
+            Vec2 original_mouse = view.MousePos();
+
+            Vec2 new_mouse_screen = Vec2(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            view.mouse_pos_screen = new_mouse_screen;
+
+            Vec2 new_mouse = view.MousePos();
+
+            // TODO: I think this should be RBUTTON but right click and drag doesn't work with
+            // the macboook trackpad on bootcamp
+            if (FLAGCMP(wParam, MK_LBUTTON)) {
+                Vec2 change = original_mouse - new_mouse;
+                view.start += change;
+                printf("View Start: %.9f %.9f\n", view.start.x, view.start.y);
+            }
+
+            return 0;
+        }
+
     }
 
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
