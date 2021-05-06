@@ -10,7 +10,7 @@
 constexpr float kPixelsPerInch = 50;
 constexpr float kScaleDelta = 0.1;
 constexpr float kTranslationDelta = 0.125;
-constexpr float kHairline = 0.05;
+constexpr float kHairline = 0.03;
 
 class Vec2 {
     public:
@@ -121,6 +121,16 @@ class Circle {
     Circle(float x, float y, float radius) : center(Vec2(x, y)), radius(radius) {};
 };
 
+constexpr float kPathCommandMove   = (float) 'M';
+constexpr float kPathCommandCubic  = (float) 'C';
+constexpr float kPathCommandLine   = (float) 'L';
+
+class Path {
+    public:
+    std::vector<float> commands;
+    Path(std::vector<float> commands) : commands(commands) {};
+};
+
 class Document {
     public:
     std::vector<Rect> shapes;
@@ -128,6 +138,7 @@ class Document {
     std::vector<Line> lines;
     std::vector<Poly> polygons;
     std::vector<Circle> circles;
+    std::vector<Path> paths;
     Document() {};
 };
 
@@ -338,7 +349,11 @@ class D2State {
         this->RenderLines(doc, view);
         this->RenderPolygons(doc, view);
         this->RenderCircles(doc, view);
+        this->RenderPaths(doc, view);
         this->RenderText(doc, view);
+
+        this->geometry_sink->Close();
+        this->renderTarget->DrawGeometry(this->geometry, this->blackBrush, kHairline);
 
         HRESULT hr = this->renderTarget->EndDraw();
         if (hr == D2DERR_RECREATE_TARGET) {
@@ -383,15 +398,55 @@ class D2State {
 
             this->geometry_sink->EndFigure(D2D1_FIGURE_END_CLOSED);
         }
-
-        this->geometry_sink->Close();
-        this->renderTarget->DrawGeometry(this->geometry, this->blackBrush, kHairline);
     }
 
     void RenderCircles(Document *doc, View *view) {
         for (auto &circle : doc->circles) {
             D2D1_ELLIPSE ellipse = D2D1::Ellipse(circle.center.D2Point(), circle.radius, circle.radius);
             this->renderTarget->DrawEllipse(ellipse, this->blackBrush, kHairline, nullptr);
+        }
+    }
+
+    void RenderPaths(Document *doc, View *view) {
+        this->geometry_sink->SetFillMode(D2D1_FILL_MODE_WINDING);
+        for (auto &path : doc->paths) {
+            this->geometry_sink->BeginFigure(Vec2(0.0f, 0.0f).D2Point(), D2D1_FIGURE_BEGIN_HOLLOW);
+            auto i=0;
+            while (i < path.commands.size()) {
+                if (path.commands[i] == kPathCommandMove) {
+                    Vec2 pos = Vec2(path.commands[i+1], path.commands[i+2]);
+                    i+=3;
+
+                    this->geometry_sink->EndFigure(D2D1_FIGURE_END_OPEN);
+                    this->geometry_sink->BeginFigure(pos.D2Point(), D2D1_FIGURE_BEGIN_HOLLOW);
+                    continue;
+                }
+
+                if (path.commands[i] == kPathCommandCubic) {
+                    Vec2 c1  = Vec2(path.commands[i+1], path.commands[i+2]);
+                    Vec2 c2  = Vec2(path.commands[i+3], path.commands[i+4]);
+                    Vec2 end = Vec2(path.commands[i+5], path.commands[i+6]);
+                    i += 7;
+
+                    D2D1_BEZIER_SEGMENT bezier = D2D1::BezierSegment(c1.D2Point(), c2.D2Point(), end.D2Point());
+                    this->geometry_sink->AddBezier(bezier);
+                    continue;
+                }
+
+                if (path.commands[i] == kPathCommandLine) {
+                    Vec2 to = Vec2(path.commands[i+1], path.commands[i+2]);
+                    i += 3;
+
+                    this->geometry_sink->AddLine(to.D2Point());
+                    continue;
+                }
+
+                printf("Unrecognized path command at %d of %.9f :(\n", i, path.commands[i]);
+                i++;
+                continue;
+            }
+
+            this->geometry_sink->EndFigure(D2D1_FIGURE_END_OPEN);
         }
     }
 
