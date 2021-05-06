@@ -112,24 +112,24 @@ Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport) {
 
         switch (*path) {
             case 'M': {
-                ParseCommand(kPathCommandMove, &commands, viewport, &path, 1, &pos, false);
+                ParseCommandLetter(kPathCommandMove, &commands, viewport, &path, 1, &pos, false);
                 sub_path_start = pos;
                 break;
             }
 
             case 'm': {
-                ParseCommand(kPathCommandMove, &commands, viewport, &path, 1, &pos, true);
+                ParseCommandLetter(kPathCommandMove, &commands, viewport, &path, 1, &pos, true);
                 sub_path_start = pos;
                 break;
             }
 
             case 'c': {
-                ParseCommand(kPathCommandCubic, &commands, viewport, &path, 3, &pos, true);
+                ParseCommandLetter(kPathCommandCubic, &commands, viewport, &path, 3, &pos, true);
                 break;
             }
 
             case 'l': {
-                ParseCommand(kPathCommandLine, &commands, viewport, &path, 1, &pos, true);
+                ParseCommandLetter(kPathCommandLine, &commands, viewport, &path, 1, &pos, true);
                 break;
             }
 
@@ -175,11 +175,34 @@ bool IsDigit(char c) {
     return c >= '0' && c <= '9';
 }
 
+bool IsWhitespace(char c) {
+    return c == ' '  ||
+           c == '\t' ||
+           c == '\r' ||
+           c == '\n';
+}
+
 float ParseFloat(char **path, float uupi) {
     return RoundFloatingInput(std::strtof(*path, path)) / uupi;
 }
 
-void ParsePoints(std::vector<float> *commands, ViewPort *viewport, char **iter, uint8_t n, Vec2 *pos, bool relative) {
+// One command letter can precede one or more commands. We iterate over the points
+// that follow a command letter and add them to the commands vector until we hit the
+// next command or the end of the path. For example, a line command may look like:
+// "L 100 100 200 200" which would be two line commands. One to (100, 100) and a following
+// one to (200, 200)
+void ParseCommandLetter(float command, std::vector<float> *commands, ViewPort *viewport, char **path, uint8_t n, Vec2 *pos, bool relative) {
+    (*path)++;
+
+    while (**path && !IsAlphabetical(**path)) {
+        commands->push_back(command);
+        EatWhitespace(path);
+        ParseCommandPoints(commands, viewport, path, n, pos, relative);
+        EatWhitespace(path);
+    }
+}
+
+void ParseCommandPoints(std::vector<float> *commands, ViewPort *viewport, char **iter, uint8_t n, Vec2 *pos, bool relative) {
     Vec2 new_pos = *pos;
     for (auto i=0; i < n; i++) {
        Vec2 new_point = ParsePoint(iter, viewport);
@@ -206,16 +229,5 @@ Vec2 ParsePoint(char **iter, ViewPort *viewport) {
 }
 
 void EatWhitespace(char **iter) {
-    while (**iter && **iter == ' ') (*iter)++;
-}
-
-void ParseCommand(float command, std::vector<float> *commands, ViewPort *viewport, char **path, uint8_t n, Vec2 *pos, bool relative) {
-    (*path)++;
-
-    while (**path && !IsAlphabetical(**path)) {
-        commands->push_back(command);
-        EatWhitespace(path);
-        ParsePoints(commands, viewport, path, n, pos, relative);
-        EatWhitespace(path);
-    }
+    while (**iter && IsWhitespace(**iter)) (*iter)++;
 }

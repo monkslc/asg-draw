@@ -39,13 +39,14 @@ Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport);
 bool IsAlphabetical(char c);
 bool IsDigit(char c);
 bool IsFloatingPointChar(char c);
+bool IsWhitespace(char c);
 float ParseFloat(char **path, float uupi);
 void EatWhitespace(char **iter);
 
 void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_node_iterator> nodes, Document *doc);
 void LoadSVGFile(char *file, Document *doc);
+void ParseCommandLetter(float command, std::vector<float> *commands, ViewPort *viewport, char **iter, uint8_t n, Vec2 *pos, bool relative);
+void ParseCommandPoints(std::vector<float> *commands, ViewPort *viewport, char **iter, uint8_t n, Vec2 *last_pos, bool relative);
 Vec2 ParsePoint(char **iter, ViewPort *viewport);
-void ParsePoints(std::vector<float> *commands, ViewPort *viewport, char **iter, uint8_t n, Vec2 *last_pos, bool relative);
-void ParseCommand(float command, std::vector<float> *commands, ViewPort *viewport, char **iter, uint8_t n, Vec2 *pos, bool relative);
 
 #endif
