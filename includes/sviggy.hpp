@@ -7,6 +7,8 @@
 
 #include <system_error>
 
+#include "d2debug.hpp"
+
 constexpr float kPixelsPerInch = 50;
 constexpr float kScaleDelta = 0.1;
 constexpr float kTranslationDelta = 0.125;
@@ -193,6 +195,7 @@ class D2State {
     ID2D1Factory* factory;
     IDWriteFactory *write_factory;
     IDWriteTextFormat *text_format;
+    IDWriteTextFormat *debug_text_format;
     ID2D1PathGeometry *geometry;
     ID2D1GeometrySink *geometry_sink;
 
@@ -201,6 +204,9 @@ class D2State {
     ID2D1SolidColorBrush* cornflowerBlueBrush;
     ID2D1SolidColorBrush* blackBrush;
     ID2D1SolidColorBrush* debugBrush;
+
+    D2Debug debug_info;
+
     HRESULT CreateDeviceIndependentResources() {
         HRESULT hr;
         hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &this->factory);
@@ -236,6 +242,24 @@ class D2State {
 
         text_format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
         text_format->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+
+         hr = write_factory->CreateTextFormat(
+            L"Arial",
+            NULL,
+            DWRITE_FONT_WEIGHT_NORMAL,
+            DWRITE_FONT_STYLE_NORMAL,
+            DWRITE_FONT_STRETCH_NORMAL,
+            12.0,
+            L"",
+            &debug_text_format
+        );
+
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+        debug_text_format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+        debug_text_format->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
 
         hr = this->factory->CreatePathGeometry(&this->geometry);
         if (FAILED(hr)) {
@@ -334,6 +358,8 @@ class D2State {
     }
 
     HRESULT Render(Document *doc, View *view) {
+        this->debug_info.Update();
+
         this->renderTarget->BeginDraw();
         this->renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
 
@@ -354,6 +380,8 @@ class D2State {
 
         this->geometry_sink->Close();
         this->renderTarget->DrawGeometry(this->geometry, this->blackBrush, kHairline);
+
+        this->RenderDebugInfo();
 
         HRESULT hr = this->renderTarget->EndDraw();
         if (hr == D2DERR_RECREATE_TARGET) {
@@ -490,6 +518,18 @@ class D2State {
             );
         }
 
+    }
+
+    void RenderDebugInfo() {
+        this->renderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+        std::wstring wide_string = std::to_wstring(this->debug_info.fps);
+        this->renderTarget->DrawText(
+            wide_string.c_str(),
+            wide_string.size(),
+            this->debug_text_format,
+            D2D1::RectF(0.0, 0.0, 100, 100),
+            this->blackBrush
+        );
     }
 };
 

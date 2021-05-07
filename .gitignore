@@ -3,3 +3,4 @@ NOTES.txt
 *.ilk
 *.pdb
 .vscode/
+*.cdr
