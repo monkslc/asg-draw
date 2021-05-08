@@ -20,25 +20,7 @@ HRESULT D2State::CreateDeviceIndependentResources() {
     }
 
      hr = write_factory->CreateTextFormat(
-        L"Arial",
-        NULL,
-        DWRITE_FONT_WEIGHT_NORMAL,
-        DWRITE_FONT_STYLE_NORMAL,
-        DWRITE_FONT_STRETCH_NORMAL,
-        12.0 / kPixelsPerInch,
-        L"",
-        &text_format
-    );
-
-    if (FAILED(hr)) {
-        return hr;
-    }
-
-    text_format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-    text_format->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
-
-     hr = write_factory->CreateTextFormat(
-        L"Arial",
+        L"Courier",
         NULL,
         DWRITE_FONT_WEIGHT_NORMAL,
         DWRITE_FONT_STYLE_NORMAL,
@@ -54,16 +36,6 @@ HRESULT D2State::CreateDeviceIndependentResources() {
 
     debug_text_format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
     debug_text_format->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
-
-    hr = this->factory->CreatePathGeometry(&this->geometry);
-    if (FAILED(hr)) {
-        return hr;
-    }
-
-    hr = this->geometry->Open(&this->geometry_sink);
-    if (FAILED(hr)) {
-        return hr;
-    }
 
     return hr;
 }
@@ -171,9 +143,6 @@ HRESULT D2State::Render(Document *doc, View *view) {
     this->RenderCircles(doc, view);
     this->RenderPaths(doc, view);
     this->RenderText(doc, view);
-
-    this->geometry_sink->Close();
-    this->renderTarget->DrawGeometry(this->geometry, this->blackBrush, kHairline);
 
     this->RenderDebugInfo();
 

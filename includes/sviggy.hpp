@@ -95,10 +95,7 @@ class D2State {
     public:
     ID2D1Factory* factory;
     IDWriteFactory *write_factory;
-    IDWriteTextFormat *text_format;
     IDWriteTextFormat *debug_text_format;
-    ID2D1PathGeometry *geometry;
-    ID2D1GeometrySink *geometry_sink;
 
     ID2D1HwndRenderTarget* renderTarget;
     ID2D1SolidColorBrush* lightSlateGrayBrush;
