@@ -15,6 +15,9 @@ constexpr float kScaleDelta = 0.1;
 constexpr float kTranslationDelta = 0.125;
 constexpr float kHairline = 0.03;
 
+// forward declarations
+class D2State;
+
 class Vec2 {
     public:
     float x,y;
@@ -30,51 +33,28 @@ class Vec2 {
 
 class Rect {
     public:
-    Vec2 pos, size;
-    Rect(float x, float y, float width, float height);
-    Rect(Vec2 pos, Vec2 size);
+    ID2D1RectangleGeometry *geometry;
+    Rect(Vec2 pos, Vec2 size, D2State *d2);
 
-    float X();
-    float Y();
-    float Width();
-    float Height();
-    float Left();
-    float Top();
-    float Right();
-    float Bottom();
+    D2D1_RECT_F Bound();
 };
 
 class Text {
     public:
     Vec2 pos;
     std::string text;
-    Text(float x, float y, std::string text);
-    Text(Vec2 pos, std::string text);
+    IDWriteTextLayout *layout;
+    IDWriteTextFormat *format;
+    Text(Vec2 pos, std::string text, D2State *d2);
 
     float X();
     float Y();
 };
 
-class Line {
-    public:
-    Vec2 start, end;
-    Line(Vec2 start, Vec2 end);
-    Line(float x1, float y1, float x2, float y2);
-};
-
-class Poly {
-    public:
-    std::vector<Vec2> points;
-    Poly();
-    Poly(std::vector<Vec2> points);
-};
-
 class Circle {
     public:
-    Vec2 center;
-    float radius;
-    Circle(Vec2 center, float radius);
-    Circle(float x, float y, float radius);
+    ID2D1EllipseGeometry *geometry;
+    Circle(Vec2 center, float radius, D2State *d2);
 };
 
 constexpr float kPathCommandMove   = (float) 'M';
@@ -84,15 +64,14 @@ constexpr float kPathCommandLine   = (float) 'L';
 class Path {
     public:
     std::vector<float> commands;
-    Path(std::vector<float> commands);
+    ID2D1PathGeometry *geometry;
+    Path(std::vector<float> commands, D2State *d2);
 };
 
 class Document {
     public:
     std::vector<Rect> shapes;
     std::vector<Text> texts;
-    std::vector<Line> lines;
-    std::vector<Poly> polygons;
     std::vector<Circle> circles;
     std::vector<Path> paths;
     Document() {};
@@ -135,8 +114,6 @@ class D2State {
     void Resize(UINT width, UINT height);
     HRESULT Render(Document *doc, View *view);
     void RenderRects(Document *doc, View *view);
-    void RenderLines(Document *doc, View *view);
-    void RenderPolygons(Document *doc, View *view);
     void RenderCircles(Document *doc, View *view);
     void RenderPaths(Document *doc, View *view);
     void RenderText(Document *doc, View *view);

@@ -168,8 +168,6 @@ HRESULT D2State::Render(Document *doc, View *view) {
     int height = static_cast<int>(rtSize.height);
 
     this->RenderRects(doc, view);
-    this->RenderLines(doc, view);
-    this->RenderPolygons(doc, view);
     this->RenderCircles(doc, view);
     this->RenderPaths(doc, view);
     this->RenderText(doc, view);
@@ -191,101 +189,25 @@ HRESULT D2State::Render(Document *doc, View *view) {
 
 void D2State::RenderRects(Document *doc, View *view) {
     for (auto &shape : doc->shapes) {
-        D2D1_RECT_F rectangle = D2D1::RectF(
-            shape.Left(),
-            shape.Top(),
-            shape.Right(),
-            shape.Bottom()
-        );
-        this->renderTarget->DrawRectangle(&rectangle, this->blackBrush, kHairline);
-    }
-}
-
-void D2State::RenderLines(Document *doc, View *view) {
-    for (auto &line : doc->lines) {
-        this->renderTarget->DrawLine(line.start.D2Point(), line.end.D2Point(), this->blackBrush, kHairline, NULL);
-    }
-}
-
-void D2State::RenderPolygons(Document *doc, View *view) {
-    this->geometry_sink->SetFillMode(D2D1_FILL_MODE_WINDING);
-    for (auto &poly : doc->polygons) {
-        if (poly.points.empty()) continue;
-
-        Vec2 start = poly.points[0];
-        this->geometry_sink->BeginFigure(start.D2Point(), D2D1_FIGURE_BEGIN_FILLED);
-
-        for (auto i=1; i<poly.points.size(); i++) {
-            Vec2 next = poly.points[i];
-            this->geometry_sink->AddLine(next.D2Point());
-        }
-
-        this->geometry_sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+        this->renderTarget->DrawGeometry(shape.geometry, this->blackBrush, kHairline);
     }
 }
 
 void D2State::RenderCircles(Document *doc, View *view) {
     for (auto &circle : doc->circles) {
-        D2D1_ELLIPSE ellipse = D2D1::Ellipse(circle.center.D2Point(), circle.radius, circle.radius);
-        this->renderTarget->DrawEllipse(ellipse, this->blackBrush, kHairline, nullptr);
+        this->renderTarget->DrawGeometry(circle.geometry, this->blackBrush, kHairline);
     }
 }
 
 void D2State::RenderPaths(Document *doc, View *view) {
-    this->geometry_sink->SetFillMode(D2D1_FILL_MODE_WINDING);
     for (auto &path : doc->paths) {
-        this->geometry_sink->BeginFigure(Vec2(0.0f, 0.0f).D2Point(), D2D1_FIGURE_BEGIN_HOLLOW);
-        auto i=0;
-        while (i < path.commands.size()) {
-            if (path.commands[i] == kPathCommandMove) {
-                Vec2 pos = Vec2(path.commands[i+1], path.commands[i+2]);
-                i+=3;
-
-                this->geometry_sink->EndFigure(D2D1_FIGURE_END_OPEN);
-                this->geometry_sink->BeginFigure(pos.D2Point(), D2D1_FIGURE_BEGIN_HOLLOW);
-                continue;
-            }
-
-            if (path.commands[i] == kPathCommandCubic) {
-                Vec2 c1  = Vec2(path.commands[i+1], path.commands[i+2]);
-                Vec2 c2  = Vec2(path.commands[i+3], path.commands[i+4]);
-                Vec2 end = Vec2(path.commands[i+5], path.commands[i+6]);
-                i += 7;
-
-                D2D1_BEZIER_SEGMENT bezier = D2D1::BezierSegment(c1.D2Point(), c2.D2Point(), end.D2Point());
-                this->geometry_sink->AddBezier(bezier);
-                continue;
-            }
-
-            if (path.commands[i] == kPathCommandLine) {
-                Vec2 to = Vec2(path.commands[i+1], path.commands[i+2]);
-                i += 3;
-
-                this->geometry_sink->AddLine(to.D2Point());
-                continue;
-            }
-
-            printf("Unrecognized path command at %d of %.9f :(\n", i, path.commands[i]);
-            i++;
-            continue;
-        }
-
-        this->geometry_sink->EndFigure(D2D1_FIGURE_END_OPEN);
+       this->renderTarget->DrawGeometry(path.geometry, this->blackBrush, kHairline);
     }
 }
 
 void D2State::RenderText(Document *doc, View *view) {
     for (auto &text : doc->texts) {
-        std::wstring wide_string = std::wstring(text.text.begin(), text.text.end());
-        this->renderTarget->DrawText(
-            wide_string.c_str(),
-            wide_string.size(),
-            this->text_format,
-            // TODO: not sure what to set for the right and bottom parameters
-            // Right now its 100 but this will break if we have something wider
-            D2D1::RectF(text.X(), text.Y(), 100, 100),
-            this->blackBrush
-        );
+        this->renderTarget->DrawTextLayout(text.pos.D2Point(), text.layout, this->blackBrush, D2D1_DRAW_TEXT_OPTIONS_NONE);
     }
 }
 

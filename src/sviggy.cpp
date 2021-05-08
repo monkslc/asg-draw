@@ -65,7 +65,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     ShowWindow(hwnd, nCmdShow);
 
     // This is here just for testing purposes so we have something to look at on load
-    LoadSVGFile((char *)"test-svg.svg", &doc);
+    LoadSVGFile((char *)"test-svg.svg", &doc, &d2state);
 
     MSG msg = { };
     while (GetMessage(&msg, NULL, 0, 0))
@@ -103,7 +103,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             float screen_y = HIWORD(lParam);
             Vec2 p = view.GetDocumentPosition(Vec2(screen_x, screen_y));
 
-            doc.shapes.emplace_back(p.x, p.y, 10, 10);
+            doc.shapes.emplace_back(Vec2(p.x, p.y), Vec2(10, 10), &d2state);
             return 0;
         }
 

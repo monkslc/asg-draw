@@ -6,7 +6,7 @@
 
 #define TAGCMP(node, type) strcmp(node->name(), type) == 0
 
-void LoadSVGFile(char *file, Document *doc) {
+void LoadSVGFile(char *file, Document *doc, D2State *d2) {
     pugi::xml_document xml;
     pugi::xml_parse_result result = xml.load_file(file);
 
@@ -14,93 +14,115 @@ void LoadSVGFile(char *file, Document *doc) {
     ViewPort viewport = ViewPort(&svg_tree);
 
     pugi::xml_object_range<pugi::xml_node_iterator> nodes = svg_tree.children();
-    AddNodesToDocument(&viewport, nodes, doc);
+    AddNodesToDocument(&viewport, nodes, doc, d2);
 }
 
-void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_node_iterator> nodes, Document *doc) {
+// TODO: just let this accept a node and go through its children
+void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_node_iterator> nodes, Document *doc, D2State *d2) {
     for (pugi::xml_node_iterator node : nodes) {
 
         if (TAGCMP(node, "g")) {
-            AddNodesToDocument(viewport, node->children(), doc);
+            AddNodesToDocument(viewport, node->children(), doc, d2);
             continue;
         }
 
         if (TAGCMP(node, "rect")) {
-            doc->shapes.push_back(ParseTagRect(node, viewport));
+            doc->shapes.push_back(ParseTagRect(node, viewport, d2));
             continue;
         }
 
         if (TAGCMP(node, "text")) {
-            doc->texts.push_back(ParseTagText(node, viewport));
+            doc->texts.push_back(ParseTagText(node, viewport, d2));
             continue;
         }
 
         if (TAGCMP(node, "line")) {
-            doc->lines.push_back(ParseTagLine(node, viewport));
+            doc->paths.push_back(ParseTagLine(node, viewport, d2));
             continue;
         }
 
         if (TAGCMP(node, "polygon")) {
-            doc->polygons.push_back(ParseTagPolygon(node, viewport));
+            doc->paths.push_back(ParseTagPolygon(node, viewport, d2));
             continue;
         }
 
         if (TAGCMP(node, "circle")) {
-            doc->circles.push_back(ParseTagCircle(node, viewport));
+            doc->circles.push_back(ParseTagCircle(node, viewport, d2));
             continue;
         }
 
         if (TAGCMP(node, "path")) {
-            doc->paths.push_back(ParseTagPath(node, viewport));
+            doc->paths.push_back(ParseTagPath(node, viewport, d2));
             continue;
         }
     }
 }
 
-Rect ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport) {
+Rect ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2) {
     float x = RoundFloatingInput(node->attribute("x"     ).as_float() / viewport->uupix);
     float y = RoundFloatingInput(node->attribute("y"     ).as_float() / viewport->uupiy);
     float w = RoundFloatingInput(node->attribute("width" ).as_float() / viewport->uupix);
     float h = RoundFloatingInput(node->attribute("height").as_float() / viewport->uupiy);
 
-    return Rect(x, y, w, h);
+    return Rect(Vec2(x, y), Vec2(w, h), d2);
 }
 
-Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport) {
+Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2) {
     float x = RoundFloatingInput(node->attribute("x").as_float() / viewport->uupix);
     float y = RoundFloatingInput(node->attribute("y").as_float() / viewport->uupiy);
 
-    return Text(x, y, std::string(node->text().get()));
+    return Text(Vec2(x, y), std::string(node->text().get()), d2);
 }
 
-Line ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport) {
+Path ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2) {
     float x1 = RoundFloatingInput(node->attribute("x1").as_float() / viewport->uupix);
     float y1 = RoundFloatingInput(node->attribute("y1").as_float() / viewport->uupiy);
     float x2 = RoundFloatingInput(node->attribute("x2").as_float() / viewport->uupix);
     float y2 = RoundFloatingInput(node->attribute("y2").as_float() / viewport->uupiy);
 
-    return Line(x1, y1, x2, y2);
+    auto commands = std::vector<float>{
+        kPathCommandMove, x1, y1,
+        kPathCommandLine, x2, y2,
+    };
+
+    return Path(commands, d2);
 }
 
-Poly ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport) {
-    auto points = std::vector<Vec2>();
+Path ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2) {
+    auto commands = std::vector<float>();
+    commands.push_back(kPathCommandMove);
+
     char *iter = (char *)node->attribute("points").value();
     while (*iter) {
        char *end;
 
        float x = ParseFloat(&iter, viewport->uupix);
        while (*iter && !IsFloatingPointChar(*iter)) iter++;
+       commands.push_back(x);
 
        float y = ParseFloat(&iter, viewport->uupiy);
        while (*iter && !IsFloatingPointChar(*iter)) iter++;
+       commands.push_back(y);
 
-        points.emplace_back(x, y);
+       commands.push_back(kPathCommandLine);
     }
 
-    return Poly(points);
+    if (commands.size() > 3) {
+        // Close the path
+        float start_x = commands[1];
+        commands.push_back(start_x);
+
+        float start_y = commands[2];
+        commands.push_back(start_y);
+
+        return Path(commands, d2);
+    } else {
+        // Not a valid polygon, just create an empty one
+        return Path(std::vector<float>(), d2);
+    }
 }
 
-Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport) {
+Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2) {
     char *path = (char *) node->attribute("d").value();
     auto commands = std::vector<float>();
 
@@ -149,15 +171,15 @@ Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport) {
 
     }
 
-    return Path(commands);
+    return Path(commands, d2);
 }
 
-Circle ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport) {
+Circle ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2) {
     float x = RoundFloatingInput(node->attribute("cx").as_float() / viewport->uupix);
     float y = RoundFloatingInput(node->attribute("cy").as_float() / viewport->uupiy);
     float r = RoundFloatingInput(node->attribute("r" ).as_float() / viewport->uupix);
 
-    return Circle(x, y, r);
+    return Circle(Vec2(x, y), r, d2);
 }
 
 bool IsFloatingPointChar(char c) {
