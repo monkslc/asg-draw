@@ -1,4 +1,7 @@
+#include <d2d1.h>
+
 #include "d2debug.hpp"
+#include "d2state.hpp"
 #include "sviggy.hpp"
 
 HRESULT D2State::CreateDeviceIndependentResources() {
@@ -158,19 +161,19 @@ HRESULT D2State::Render(Document *doc, View *view) {
 
 void D2State::RenderRects(Document *doc, View *view) {
     for (auto &shape : doc->shapes) {
-        this->renderTarget->DrawGeometry(shape.geometry, this->blackBrush, kHairline);
+        RenderShape(this, &shape);
     }
 }
 
 void D2State::RenderCircles(Document *doc, View *view) {
     for (auto &circle : doc->circles) {
-        this->renderTarget->DrawGeometry(circle.geometry, this->blackBrush, kHairline);
+        RenderShape(this, &circle);
     }
 }
 
 void D2State::RenderPaths(Document *doc, View *view) {
     for (auto &path : doc->paths) {
-       this->renderTarget->DrawGeometry(path.geometry, this->blackBrush, kHairline);
+        RenderShape(this, &path);
     }
 }
 

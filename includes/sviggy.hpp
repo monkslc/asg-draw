@@ -25,18 +25,36 @@ class Vec2 {
     Vec2(D2D1_POINT_2F p);
 
     D2D1_POINT_2F D2Point();
+    D2D1_SIZE_F Size();
     Vec2 operator+(Vec2 &b);
+    Vec2 operator+(Vec2 b);
     Vec2& operator+=(Vec2 &b);
     Vec2 operator-(Vec2 &b);
     Vec2& operator-=(Vec2 &b);
+
+    Vec2 operator-();
+    Vec2 operator/(float b);
+};
+
+class Transformation {
+    public:
+    Vec2 translation;
+    float rotation;
+    Transformation();
+    D2D1::Matrix3x2F Matrix(Vec2 center);
 };
 
 class Rect {
     public:
+    Transformation transform;
     ID2D1RectangleGeometry *geometry;
     Rect(Vec2 pos, Vec2 size, D2State *d2);
 
     D2D1_RECT_F Bound();
+    D2D1_RECT_F OriginalBound();
+    Vec2 Center();
+    Vec2 OriginalCenter();
+    D2D1::Matrix3x2F TransformMatrix();
 };
 
 class Text {
@@ -45,6 +63,7 @@ class Text {
     std::string text;
     IDWriteTextLayout *layout;
     IDWriteTextFormat *format;
+    Transformation transform;
     Text(Vec2 pos, std::string text, D2State *d2);
 
     float X();
@@ -54,7 +73,14 @@ class Text {
 class Circle {
     public:
     ID2D1EllipseGeometry *geometry;
+    Transformation transform;
     Circle(Vec2 center, float radius, D2State *d2);
+
+    D2D1_RECT_F Bound();
+    D2D1_RECT_F OriginalBound();
+    Vec2 Center();
+    Vec2 OriginalCenter();
+    D2D1::Matrix3x2F TransformMatrix();
 };
 
 constexpr float kPathCommandMove   = (float) 'M';
@@ -63,9 +89,16 @@ constexpr float kPathCommandLine   = (float) 'L';
 
 class Path {
     public:
+    Transformation transform;
     std::vector<float> commands;
     ID2D1PathGeometry *geometry;
     Path(std::vector<float> commands, D2State *d2);
+
+    D2D1_RECT_F Bound();
+    D2D1_RECT_F OriginalBound();
+    Vec2 Center();
+    Vec2 OriginalCenter();
+    D2D1::Matrix3x2F TransformMatrix();
 };
 
 class Document {
