@@ -29,12 +29,12 @@ class ViewPort {
     }
 };
 
-Circle ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2);
-Path ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2);
-Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2);
-Path ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2);
-Rect ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2);
-Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport, D2State *d2);
+Circle ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+Path ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+Path ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+Rect ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 
 bool IsAlphabetical(char c);
 bool IsDigit(char c);
@@ -43,8 +43,8 @@ bool IsWhitespace(char c);
 float ParseFloat(char **path, float uupi);
 void EatWhitespace(char **iter);
 
-void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_node_iterator> nodes, Document *doc, D2State *d2);
-void LoadSVGFile(char *file, Document *doc, D2State *d2);
+void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_node_iterator> nodes, Document *doc, DXState *dx);
+void LoadSVGFile(char *file, Document *doc, DXState *dx);
 void ParseCommandLetter(float command, std::vector<float> *commands, ViewPort *viewport, char **iter, uint8_t n, Vec2 *pos, bool relative);
 void ParseCommandPoints(std::vector<float> *commands, ViewPort *viewport, char **iter, uint8_t n, Vec2 *last_pos, bool relative);
 Vec2 ParsePoint(char **iter, ViewPort *viewport);

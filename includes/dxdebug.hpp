@@ -1,5 +1,5 @@
-#ifndef D2DEBUG_H
-#define D2DEBUG_H
+#ifndef DXDEBUG_H
+#define DXDEBUG_H
 
 #include <chrono>
 
@@ -8,13 +8,13 @@
 typedef std::chrono::time_point<std::chrono::high_resolution_clock> HRCTime;
 typedef std::chrono::duration<float, std::milli> MilliD;
 
-class D2Debug {
+class DXDebug {
     public:
     HRCTime last_frame;
     HRCTime current_frame;
     float fps;
     size_t frame_count;
-    D2Debug() : last_frame(NOW()), current_frame(NOW()), frame_count(0) {};
+    DXDebug() : last_frame(NOW()), current_frame(NOW()), frame_count(0) {};
 
     void Update() {
         this->last_frame = current_frame;

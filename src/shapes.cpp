@@ -14,14 +14,14 @@ D2D1::Matrix3x2F Transformation::Matrix(Vec2 center) {
     return rotation * translation;
 };
 
-Rect::Rect(Vec2 pos, Vec2 size, D2State *d2) : transform(Transformation()) {
+Rect::Rect(Vec2 pos, Vec2 size, DXState* dx) : transform(Transformation()) {
     D2D1_RECT_F rectangle = D2D1::RectF(
         pos.x,
         pos.y,
         pos.x + size.x,
         pos.y + size.y
     );
-    d2->factory->CreateRectangleGeometry(rectangle, &this->geometry);
+    dx->factory->CreateRectangleGeometry(rectangle, &this->geometry);
 };
 
 D2D1_RECT_F Rect::Bound() {
@@ -44,10 +44,10 @@ D2D1::Matrix3x2F Rect::TransformMatrix() {
     return ShapeTransformMatrix(this);
 }
 
-Text::Text(Vec2 pos, std::string text, D2State *d2) : pos(pos), text(text), transform(Transformation()) {
+Text::Text(Vec2 pos, std::string text, DXState* dx) : pos(pos), text(text), transform(Transformation()) {
     HRESULT hr;
 
-    hr = d2->write_factory->CreateTextFormat(
+    hr = dx->write_factory->CreateTextFormat(
         L"Arial",
         NULL,
         DWRITE_FONT_WEIGHT_NORMAL,
@@ -62,7 +62,7 @@ Text::Text(Vec2 pos, std::string text, D2State *d2) : pos(pos), text(text), tran
     this->format->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
 
     std::wstring wide_string = std::wstring(text.begin(), text.end());
-    d2->write_factory->CreateTextLayout(
+    dx->write_factory->CreateTextLayout(
         wide_string.c_str(),
         wide_string.size(),
         this->format,
@@ -81,9 +81,9 @@ float Text::Y() {
     return this->pos.y;
 }
 
-Circle::Circle(Vec2 center, float radius, D2State *d2) : transform(Transformation()) {
+Circle::Circle(Vec2 center, float radius, DXState *dx) : transform(Transformation()) {
     D2D1_ELLIPSE ellipse = D2D1::Ellipse(center.D2Point(), radius, radius);
-    d2->factory->CreateEllipseGeometry(ellipse, &this->geometry);
+    dx->factory->CreateEllipseGeometry(ellipse, &this->geometry);
 };
 
 D2D1_RECT_F Circle::Bound() {
@@ -106,9 +106,9 @@ D2D1::Matrix3x2F Circle::TransformMatrix() {
     return ShapeTransformMatrix(this);
 }
 
-Path::Path(std::vector<float> commands, D2State *d2) : commands(commands), transform(Transformation()) {
+Path::Path(std::vector<float> commands, DXState *dx) : commands(commands), transform(Transformation()) {
     HRESULT hr;
-    hr = d2->factory->CreatePathGeometry(&this->geometry);
+    hr = dx->factory->CreatePathGeometry(&this->geometry);
 
     ID2D1GeometrySink *geometry_sink;
     hr = this->geometry->Open(&geometry_sink);

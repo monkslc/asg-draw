@@ -1,6 +1,8 @@
 #ifndef SVIGGY_H
 #define SVIGGY_H
 
+#include <d3d11.h>
+#include <dxgi.h>
 #include <dwrite.h>
 #include <d2d1.h>
 #include <string>
@@ -8,7 +10,9 @@
 
 #include <system_error>
 
-#include "d2debug.hpp"
+#include "dxdebug.hpp"
+
+#define RETURN_FAIL(hr) if(FAILED(hr)) return hr
 
 constexpr float kPixelsPerInch = 50;
 constexpr float kScaleDelta = 0.1;
@@ -16,7 +20,7 @@ constexpr float kTranslationDelta = 0.125;
 constexpr float kHairline = 0.03;
 
 // forward declarations
-class D2State;
+class DXState;
 
 class Vec2 {
     public:
@@ -48,7 +52,7 @@ class Rect {
     public:
     Transformation transform;
     ID2D1RectangleGeometry *geometry;
-    Rect(Vec2 pos, Vec2 size, D2State *d2);
+    Rect(Vec2 pos, Vec2 size, DXState *dx);
 
     D2D1_RECT_F Bound();
     D2D1_RECT_F OriginalBound();
@@ -64,7 +68,7 @@ class Text {
     IDWriteTextLayout *layout;
     IDWriteTextFormat *format;
     Transformation transform;
-    Text(Vec2 pos, std::string text, D2State *d2);
+    Text(Vec2 pos, std::string text, DXState *dx);
 
     float X();
     float Y();
@@ -74,7 +78,7 @@ class Circle {
     public:
     ID2D1EllipseGeometry *geometry;
     Transformation transform;
-    Circle(Vec2 center, float radius, D2State *d2);
+    Circle(Vec2 center, float radius, DXState *dx);
 
     D2D1_RECT_F Bound();
     D2D1_RECT_F OriginalBound();
@@ -92,7 +96,7 @@ class Path {
     Transformation transform;
     std::vector<float> commands;
     ID2D1PathGeometry *geometry;
-    Path(std::vector<float> commands, D2State *d2);
+    Path(std::vector<float> commands, DXState *dx);
 
     D2D1_RECT_F Bound();
     D2D1_RECT_F OriginalBound();
@@ -124,28 +128,39 @@ class View {
     D2D1::Matrix3x2F ScreenToDocumentMat();
 };
 
-class D2State {
+class DXState {
     public:
+    // Device Independent Direct2D resources
     ID2D1Factory* factory;
     IDWriteFactory *write_factory;
     IDWriteTextFormat *debug_text_format;
 
-    ID2D1HwndRenderTarget* renderTarget;
+    // Device dependent Direct2D resources
+    ID2D1RenderTarget* renderTarget;
     ID2D1SolidColorBrush* lightSlateGrayBrush;
     ID2D1SolidColorBrush* cornflowerBlueBrush;
     ID2D1SolidColorBrush* blackBrush;
     ID2D1SolidColorBrush* debugBrush;
 
-    D2Debug debug_info;
+    // Direct3D resources
+    ID3D11Device* device;
+    ID3D11DeviceContext* device_context;
+    IDXGISwapChain* swap_chain;
+    ID3D11RenderTargetView* render_target_view;
+
+    DXDebug debug_info;
 
     HRESULT CreateDeviceIndependentResources();
     HRESULT CreateDeviceResources(HWND hwnd);
-    void DiscardDeviceResources();
-    void Resize(UINT width, UINT height);
+    HRESULT CreateRenderTarget();
+    HRESULT DiscardRenderTarget();
+    HRESULT DiscardDeviceResources();
+    void Teardown();
+    HRESULT Resize(UINT width, UINT height);
     HRESULT Render(Document *doc, View *view);
-    void RenderRects(Document *doc, View *view);
-    void RenderCircles(Document *doc, View *view);
-    void RenderPaths(Document *doc, View *view);
+    HRESULT RenderRects(Document *doc, View *view);
+    HRESULT RenderCircles(Document *doc, View *view);
+    HRESULT RenderPaths(Document *doc, View *view);
     void RenderText(Document *doc, View *view);
     void RenderGridLines();
     void RenderDebugInfo();
@@ -153,5 +168,8 @@ class D2State {
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void CreateDebugConsole();
+void CreateGuiContext();
+void TeardownGui();
+void ExitOnFailure(HRESULT hr);
 
 #endif

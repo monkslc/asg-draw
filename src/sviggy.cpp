@@ -1,5 +1,7 @@
 #pragma comment(lib, "d2d1")
+#pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dwrite")
+#pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "user32")
 
 #ifndef UNICODE
@@ -11,29 +13,32 @@
 #include <windows.h>
 #include <windowsx.h>
 
+#include "imgui.h"
+#include "imgui_impl_dx11.h"
+#include "imgui_impl_win32.h"
 #include "pugixml.hpp"
 
 #include "svg.hpp"
 #include "sviggy.hpp"
 
-D2State d2state;
+DXState dxstate;
 Document doc;
 View view;
 
 #define FLAGCMP(num, flag) num & flag
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
+    HRESULT hr;
+
     // TODO: only do this in debug mode
     CreateDebugConsole();
 
+    CreateGuiContext();
+
     const wchar_t CLASS_NAME[]  = L"Sample Window Class";
 
-    HRESULT hr = d2state.CreateDeviceIndependentResources();
-
-    if (FAILED(hr)) {
-        MessageBox(NULL, L"Failed to Create the D2D1 Device Independent Resources. Exiting program", L"Direct2D Error", 0);
-        return 2;
-    }
+    hr = dxstate.CreateDeviceIndependentResources();
+    ExitOnFailure(hr);
 
     WNDCLASS wc = { };
 
@@ -59,13 +64,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     );
 
     if (hwnd == NULL) {
-        return 2;
+        MessageBox(NULL, L"Failed to create window", L"", NULL);
+        return 1;
     }
 
     ShowWindow(hwnd, nCmdShow);
 
     // This is here just for testing purposes so we have something to look at on load
-    LoadSVGFile((char *)"test-svg.svg", &doc, &d2state);
+    LoadSVGFile((char *)"test-svg.svg", &doc, &dxstate);
 
     MSG msg = { };
     while (GetMessage(&msg, NULL, 0, 0))
@@ -74,12 +80,22 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         DispatchMessage(&msg);
     }
 
-    d2state.DiscardDeviceResources();
+    dxstate.Teardown();
+    TeardownGui();
 
     return 0;
 }
 
+// Forward declare message handler from imgui_impl_win32.cpp
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    HRESULT hr;
+
+    if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
+        return true;
+
+    // Handle any non input based messages first so we can easily defer any keybaord or mouse events to ImGui if it wants them
     switch (uMsg) {
         case WM_DESTROY:
             PostQuitMessage(0);
@@ -88,22 +104,33 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         case WM_SIZE: {
             UINT width = LOWORD(lParam);
             UINT height = HIWORD(lParam);
-            d2state.Resize(width, height);
+            hr = dxstate.Resize(width, height);
+            ExitOnFailure(hr);
             return 0;
         }
 
         case WM_PAINT: {
-            d2state.CreateDeviceResources(hwnd);
-            d2state.Render(&doc, &view);
+            hr = dxstate.CreateDeviceResources(hwnd);
+            ExitOnFailure(hr);
+
+            hr = dxstate.Render(&doc, &view);
+            ExitOnFailure(hr);
             return 0;
         }
+    }
 
+    ImGuiIO &io = ImGui::GetIO();
+    if (io.WantCaptureMouse) {
+        return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    }
+
+    switch (uMsg) {
         case WM_LBUTTONDOWN: {
             float screen_x = LOWORD(lParam);
             float screen_y = HIWORD(lParam);
             Vec2 p = view.GetDocumentPosition(Vec2(screen_x, screen_y));
 
-            doc.shapes.emplace_back(Vec2(p.x, p.y), Vec2(10, 10), &d2state);
+            doc.shapes.emplace_back(Vec2(p.x, p.y), Vec2(10, 10), &dxstate);
             return 0;
         }
 
@@ -172,4 +199,27 @@ void CreateDebugConsole() {
     AllocConsole();
     FILE *file;
     freopen_s(&file, "CON", "w", stdout);
+}
+
+void CreateGuiContext() {
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void) io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGui::StyleColorsDark();
+}
+
+void TeardownGui() {
+    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void ExitOnFailure(HRESULT hr) {
+    if (FAILED(hr)) {
+        // TODO: display error message here or write it out to a file using something like:
+        // printf("%s\n", std::system_category().message(hr).c_str());
+        std::exit(1);
+    }
 }
