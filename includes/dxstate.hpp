@@ -8,7 +8,6 @@ HRESULT RenderShape(DXState *d2, T* shape) {
     HRESULT hr;
 
     ID2D1TransformedGeometry *geo;
-    shape->transform.rotation += 1;
     hr = d2->factory->CreateTransformedGeometry(
         shape->geometry,
         shape->TransformMatrix(),

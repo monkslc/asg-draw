@@ -131,9 +131,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             case WM_LBUTTONDOWN: {
                 float screen_x = LOWORD(lParam);
                 float screen_y = HIWORD(lParam);
-                Vec2 p = view.GetDocumentPosition(Vec2(screen_x, screen_y));
 
-                doc.shapes.emplace_back(Vec2(p.x, p.y), Vec2(10, 10), &dxstate);
+                doc.Click(Vec2(screen_x, screen_y), &view);
                 return 0;
             }
 

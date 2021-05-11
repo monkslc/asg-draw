@@ -22,14 +22,21 @@ void View::Scale(bool in) {
     this->start += mouse_change;
 }
 
-D2D1::Matrix3x2F View::DocumentToScreenMat() {
-    D2D1::Matrix3x2F scale_matrix = D2D1::Matrix3x2F::Scale(
+D2D1::Matrix3x2F View::ScaleMatrix() {
+    return D2D1::Matrix3x2F::Scale(
         this->scale * kPixelsPerInch,
         this->scale * kPixelsPerInch,
         D2D1_POINT_2F()
     );
+}
 
-    D2D1::Matrix3x2F translation_matrix = D2D1::Matrix3x2F::Translation(-this->start.x, -this->start.y);
+D2D1::Matrix3x2F View::TranslationMatrix() {
+    return D2D1::Matrix3x2F::Translation(-this->start.x, -this->start.y);
+}
+
+D2D1::Matrix3x2F View::DocumentToScreenMat() {
+    D2D1::Matrix3x2F scale_matrix = this->ScaleMatrix();
+    D2D1::Matrix3x2F translation_matrix = this->TranslationMatrix();
 
     return translation_matrix * scale_matrix;
 }

@@ -105,20 +105,20 @@ class Path {
     D2D1::Matrix3x2F TransformMatrix();
 };
 
-class Document {
-    public:
-    std::vector<Rect> shapes;
-    std::vector<Text> texts;
-    std::vector<Circle> circles;
-    std::vector<Path> paths;
-    Document() {};
+enum class ShapeType {
+    None,
+    Rect,
+    Text,
+    Circle,
+    Path,
 };
 
-class UIState {
+class ActiveShape {
     public:
-    bool show_debug = false;
-    bool show_command_prompt = false;
-    bool show_demo_window = false;
+    ShapeType type;
+    int index;
+    ActiveShape(ShapeType type, int index) : type(type), index(index) {};
+    ActiveShape() : type(ShapeType::None), index(-1) {};
 };
 
 class View {
@@ -131,9 +131,68 @@ class View {
     Vec2 GetDocumentPosition(Vec2 screen_pos);
     Vec2 MousePos();
     void Scale(bool in);
+    D2D1::Matrix3x2F ScaleMatrix();
+    D2D1::Matrix3x2F TranslationMatrix();
     D2D1::Matrix3x2F DocumentToScreenMat();
     D2D1::Matrix3x2F ScreenToDocumentMat();
 };
+
+class Document {
+    public:
+    std::vector<Rect> shapes;
+    std::vector<Text> texts;
+    std::vector<Circle> circles;
+    std::vector<Path> paths;
+    ActiveShape active_shape;
+    Document() {};
+
+    // TODO: check Hresult on calls to ContainsPoint
+    void Click(Vec2 screen_pos, View *view) {
+        D2D1_POINT_2F point = screen_pos.D2Point();
+
+
+        bool clicked_shape = false;
+
+        clicked_shape = this->CollectionHitTest(&this->shapes, point, view, ShapeType::Rect);
+        if (clicked_shape) return;
+
+        clicked_shape = this->CollectionHitTest(&this->circles, point, view, ShapeType::Circle);
+        if (clicked_shape) return;
+
+        clicked_shape = this->CollectionHitTest(&this->paths, point, view, ShapeType::Path);
+        if (clicked_shape) return;
+
+        this->active_shape = ActiveShape();
+    }
+
+    template <typename T>
+    bool CollectionHitTest(std::vector<T> *collection, D2D1_POINT_2F point, View *view, ShapeType type) {
+        D2D1::Matrix3x2F doc_to_screen = view->DocumentToScreenMat();
+
+        for (auto i=0; i<collection->size(); i++) {
+            T *shape = &(*collection)[i];
+
+            BOOL contains_point;
+            shape->geometry->StrokeContainsPoint(point, kHairline, NULL, shape->TransformMatrix() * doc_to_screen, &contains_point);
+
+            if (contains_point) {
+                printf("found you :)\n");
+                this->active_shape = ActiveShape(type, i);
+                return true;
+            }
+        }
+
+        return false;
+    }
+};
+
+class UIState {
+    public:
+    bool show_debug = false;
+    bool show_command_prompt = false;
+    bool show_demo_window = false;
+};
+
 
 class DXState {
     public:
@@ -171,6 +230,7 @@ class DXState {
     void RenderDemoWindow(UIState *ui);
     void RenderDebugWindow(UIState *ui, View *view);
     void RenderCommandPrompt(UIState *ui, Document *doc, View *view);
+    void RenderActiveSelectionWindow(Document *doc);
 };
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);

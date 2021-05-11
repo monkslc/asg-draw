@@ -253,6 +253,7 @@ HRESULT DXState::Render(Document *doc, View *view, UIState *ui) {
     this->RenderDemoWindow(ui);
     this->RenderDebugWindow(ui, view);
     this->RenderCommandPrompt(ui, doc, view);
+    this->RenderActiveSelectionWindow(doc);
 
     this->renderTarget->BeginDraw();
     this->renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
@@ -453,6 +454,51 @@ void DXState::RenderCommandPrompt(UIState *ui, Document *doc, View *view) {
     CmdPromptEnd:;
     ImGui::End();
 }
+
+void DXState::RenderActiveSelectionWindow(Document *doc) {
+    if (doc->active_shape.type == ShapeType::None) {
+       return;
+    }
+
+    int id = doc->active_shape.index;
+
+    ImGui::Begin("Active Selection");
+
+    Transformation* transform;
+    const char *shape_type;
+    switch (doc->active_shape.type) {
+        case ShapeType::Rect: {
+            transform = &doc->shapes[id].transform;
+            shape_type = "Rect";
+            break;
+        }
+
+        case ShapeType::Circle: {
+            transform = &doc->circles[id].transform;
+            shape_type = "Circle";
+            break;
+        }
+
+        case ShapeType::Path: {
+            transform = &doc->paths[id].transform;
+            shape_type = "Path";
+            break;
+        }
+
+        default:
+            break;
+    }
+
+    ImGui::Text("Shape Id: %d\n", id);
+    ImGui::Text("Shape Type: %s\n", shape_type);
+    ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f);
+    ImGui::DragFloat("Translation x", &transform->translation.x);
+    ImGui::DragFloat("Translation y", &transform->translation.y);
+
+    ImGui::End();
+}
+
+
 
 Vec2 ParseVec(char **iter) {
     float x = std::strtof(*iter, iter);
