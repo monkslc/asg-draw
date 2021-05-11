@@ -23,6 +23,7 @@
 
 DXState dxstate;
 Document doc;
+UIState ui;
 View view;
 
 #define FLAGCMP(num, flag) num & flag
@@ -113,7 +114,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             hr = dxstate.CreateDeviceResources(hwnd);
             ExitOnFailure(hr);
 
-            hr = dxstate.Render(&doc, &view);
+            hr = dxstate.Render(&doc, &view, &ui);
             ExitOnFailure(hr);
             return 0;
         }
@@ -158,6 +159,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
                 case VK_OEM_MINUS:
                     view.Scale(false);
+                    break;
+
+                case 'D':
+                    ui.show_debug = !ui.show_debug;
                     break;
 
                 default:

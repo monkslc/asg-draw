@@ -10,8 +10,6 @@
 
 #include <system_error>
 
-#include "dxdebug.hpp"
-
 #define RETURN_FAIL(hr) if(FAILED(hr)) return hr
 
 constexpr float kPixelsPerInch = 50;
@@ -114,6 +112,11 @@ class Document {
     Document() {};
 };
 
+class UIState {
+    public:
+    bool show_debug = false;
+};
+
 class View {
     public:
     Vec2 start;
@@ -148,8 +151,6 @@ class DXState {
     IDXGISwapChain* swap_chain;
     ID3D11RenderTargetView* render_target_view;
 
-    DXDebug debug_info;
-
     HRESULT CreateDeviceIndependentResources();
     HRESULT CreateDeviceResources(HWND hwnd);
     HRESULT CreateRenderTarget();
@@ -157,13 +158,13 @@ class DXState {
     HRESULT DiscardDeviceResources();
     void Teardown();
     HRESULT Resize(UINT width, UINT height);
-    HRESULT Render(Document *doc, View *view);
+    HRESULT Render(Document *doc, View *view, UIState *ui);
     HRESULT RenderRects(Document *doc, View *view);
     HRESULT RenderCircles(Document *doc, View *view);
     HRESULT RenderPaths(Document *doc, View *view);
     void RenderText(Document *doc, View *view);
     void RenderGridLines();
-    void RenderDebugInfo();
+    void RenderDebugWindow(View *view);
 };
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
