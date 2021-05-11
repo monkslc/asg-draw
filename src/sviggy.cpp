@@ -81,8 +81,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         DispatchMessage(&msg);
     }
 
-    dxstate.Teardown();
     TeardownGui();
+
+    // Teardown was taking too long. Leaving it here commented out though so its
+    // documented why we don't release the dx resources before exiting.
+    // dxstate.Teardown();
 
     return 0;
 }
@@ -96,7 +99,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam))
         return true;
 
-    // Handle any non input based messages first so we can easily defer any keybaord or mouse events to ImGui if it wants them
+    // Non keybaord and mouse events
     switch (uMsg) {
         case WM_DESTROY:
             PostQuitMessage(0);
@@ -121,81 +124,94 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     }
 
     ImGuiIO &io = ImGui::GetIO();
-    if (io.WantCaptureMouse) {
-        return DefWindowProc(hwnd, uMsg, wParam, lParam);
-    }
 
-    switch (uMsg) {
-        case WM_LBUTTONDOWN: {
-            float screen_x = LOWORD(lParam);
-            float screen_y = HIWORD(lParam);
-            Vec2 p = view.GetDocumentPosition(Vec2(screen_x, screen_y));
+    // Handle mouse events if ImGui doesn't want them
+    if (!io.WantCaptureMouse) {
+        switch (uMsg) {
+            case WM_LBUTTONDOWN: {
+                float screen_x = LOWORD(lParam);
+                float screen_y = HIWORD(lParam);
+                Vec2 p = view.GetDocumentPosition(Vec2(screen_x, screen_y));
 
-            doc.shapes.emplace_back(Vec2(p.x, p.y), Vec2(10, 10), &dxstate);
-            return 0;
-        }
-
-        case WM_KEYDOWN: {
-            switch (wParam) {
-                case VK_LEFT:
-                    view.start.x -= kTranslationDelta;
-                    break;
-
-                case VK_RIGHT:
-                    view.start.x += kTranslationDelta;
-                    break;
-
-                case VK_DOWN:
-                    view.start.y += kTranslationDelta;
-                    break;
-
-                case VK_UP:
-                    view.start.y -= kTranslationDelta;
-                    break;
-
-                case VK_OEM_PLUS:
-                    view.Scale(true);
-                    break;
-
-                case VK_OEM_MINUS:
-                    view.Scale(false);
-                    break;
-
-                case 'D':
-                    ui.show_debug = !ui.show_debug;
-                    break;
-
-                default:
-                    return 0;
-            }
-            return 0;
-        }
-
-        case WM_MOUSEWHEEL: {
-            bool scroll_direction = GET_WHEEL_DELTA_WPARAM(wParam) > 0;
-            view.Scale(scroll_direction);
-            return 0;
-        }
-
-        case WM_MOUSEMOVE: {
-            Vec2 original_mouse = view.MousePos();
-
-            Vec2 new_mouse_screen = Vec2(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            view.mouse_pos_screen = new_mouse_screen;
-
-            Vec2 new_mouse = view.MousePos();
-
-            // TODO: I think this should be RBUTTON but right click and drag doesn't work with
-            // the macboook trackpad on bootcamp
-            if (FLAGCMP(wParam, MK_LBUTTON)) {
-                Vec2 change = original_mouse - new_mouse;
-                view.start += change;
+                doc.shapes.emplace_back(Vec2(p.x, p.y), Vec2(10, 10), &dxstate);
+                return 0;
             }
 
-            return 0;
-        }
+            case WM_MOUSEWHEEL: {
+                bool scroll_direction = GET_WHEEL_DELTA_WPARAM(wParam) > 0;
+                view.Scale(scroll_direction);
+                return 0;
+            }
 
+            case WM_MOUSEMOVE: {
+                Vec2 original_mouse = view.MousePos();
+
+                Vec2 new_mouse_screen = Vec2(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+                view.mouse_pos_screen = new_mouse_screen;
+
+                Vec2 new_mouse = view.MousePos();
+
+                // TODO: I think this should be RBUTTON but right click and drag doesn't work with
+                // the macboook trackpad on bootcamp
+                if (FLAGCMP(wParam, MK_LBUTTON)) {
+                    Vec2 change = original_mouse - new_mouse;
+                    view.start += change;
+                }
+
+                return 0;
+            }
+        }
     }
+
+    // Handle keybaord events if ImGui doesn't want them
+    if (!io.WantCaptureKeyboard) {
+        switch (uMsg) {
+            case WM_KEYDOWN: {
+                switch (wParam) {
+                    case VK_LEFT:
+                        view.start.x -= kTranslationDelta;
+                        break;
+
+                    case VK_RIGHT:
+                        view.start.x += kTranslationDelta;
+                        break;
+
+                    case VK_DOWN:
+                        view.start.y += kTranslationDelta;
+                        break;
+
+                    case VK_UP:
+                        view.start.y -= kTranslationDelta;
+                        break;
+
+                    case VK_OEM_PLUS:
+                        view.Scale(true);
+                        break;
+
+                    case VK_OEM_MINUS:
+                        view.Scale(false);
+                        break;
+
+                    case 'Y':
+                        ui.show_demo_window = !ui.show_demo_window;
+                        break;
+
+                    case 'D':
+                        ui.show_debug = !ui.show_debug;
+                        break;
+
+                    case VK_OEM_2:
+                        ui.show_command_prompt = !ui.show_command_prompt;
+                        break;
+
+                    default:
+                        return 0;
+                }
+                return 0;
+            }
+        }
+    }
+
 
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }

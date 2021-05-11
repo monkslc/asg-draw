@@ -34,4 +34,6 @@ HRESULT SafeRelease(T **h)
     return hr;
 }
 
+Vec2 ParseVec(char **iter);
+
 #endif

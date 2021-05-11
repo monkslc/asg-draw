@@ -11,6 +11,8 @@
 #include <system_error>
 
 #define RETURN_FAIL(hr) if(FAILED(hr)) return hr
+// Subtract 1 from array size to avoid the null terminating character for b
+#define STRNCMP(a, b) strncmp(a, b, ARRAYSIZE(b) - 1) == 0
 
 constexpr float kPixelsPerInch = 50;
 constexpr float kScaleDelta = 0.1;
@@ -115,6 +117,8 @@ class Document {
 class UIState {
     public:
     bool show_debug = false;
+    bool show_command_prompt = false;
+    bool show_demo_window = false;
 };
 
 class View {
@@ -164,7 +168,9 @@ class DXState {
     HRESULT RenderPaths(Document *doc, View *view);
     void RenderText(Document *doc, View *view);
     void RenderGridLines();
-    void RenderDebugWindow(View *view);
+    void RenderDemoWindow(UIState *ui);
+    void RenderDebugWindow(UIState *ui, View *view);
+    void RenderCommandPrompt(UIState *ui, Document *doc, View *view);
 };
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);

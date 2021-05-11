@@ -249,9 +249,10 @@ HRESULT DXState::Render(Document *doc, View *view, UIState *ui) {
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
-    if (ui->show_debug) {
-        this->RenderDebugWindow(view);
-    }
+
+    this->RenderDemoWindow(ui);
+    this->RenderDebugWindow(ui, view);
+    this->RenderCommandPrompt(ui, doc, view);
 
     this->renderTarget->BeginDraw();
     this->renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
@@ -358,7 +359,15 @@ void DXState::RenderGridLines() {
     }
 }
 
-void DXState::RenderDebugWindow(View *view) {
+void DXState::RenderDemoWindow(UIState *ui) {
+    if (!ui->show_demo_window) return;
+
+    ImGui::ShowDemoWindow();
+}
+
+void DXState::RenderDebugWindow(UIState *ui, View *view) {
+    if (!ui->show_debug) return;
+
     ImGuiIO& io = ImGui::GetIO();
 
     ImGui::Begin("Debug");
@@ -366,4 +375,89 @@ void DXState::RenderDebugWindow(View *view) {
     ImGui::Text("Mouse Screen: (%.3f, %.3f)", view->mouse_pos_screen.x, view->mouse_pos_screen.y);
     ImGui::Text("Mouse Document: (%.3f, %.3f)", view->MousePos().x, view->MousePos().y);
     ImGui::End();
+}
+
+static char cmd_buf[256] = {0};
+static bool was_visible_previous_frame = false;
+ImGuiInputTextFlags cmd_flags = ImGuiInputTextFlags_EnterReturnsTrue;
+
+void ClearCmdBuf() {
+    char *iter = &cmd_buf[0];
+    while (*iter) {
+        *iter = NULL;
+        iter++;
+    }
+}
+
+void CommandPromptReset(UIState *ui) {
+    ClearCmdBuf();
+    ui->show_command_prompt = false;
+}
+
+char cmd_rect[] = "rect";
+char cmd_view[] = "view";
+char cmd_zoom[] = "zoom";
+
+void DXState::RenderCommandPrompt(UIState *ui, Document *doc, View *view) {
+    if (!ui->show_command_prompt) {
+        was_visible_previous_frame = false;
+        return;
+    }
+
+
+    ImGui::Begin("Command Prompt", NULL, ImGuiWindowFlags_NoTitleBar);
+
+    if (!was_visible_previous_frame) {
+        ImGui::SetKeyboardFocusHere();
+        was_visible_previous_frame = true;
+    }
+
+    if (ImGui::InputText("", cmd_buf, ARRAYSIZE(cmd_buf), cmd_flags)) {
+        if (STRNCMP(cmd_buf, cmd_rect)) {
+            char *iter = &cmd_buf[ARRAYSIZE(cmd_rect)];
+
+            Vec2 size = ParseVec(&iter);
+            size.x = size.x ? size.x : 10.0f;
+            size.y = size.y ? size.y : 10.0f;
+
+            Vec2 pos = ParseVec(&iter);
+
+            doc->shapes.emplace_back(pos, size, this);
+
+            CommandPromptReset(ui);
+            goto CmdPromptEnd;
+        }
+
+        if (STRNCMP(cmd_buf, cmd_view)) {
+            char *iter = &cmd_buf[ARRAYSIZE(cmd_view)];
+
+            Vec2 pos = ParseVec(&iter);
+            view->start = pos;
+
+            CommandPromptReset(ui);
+            goto CmdPromptEnd;
+        }
+
+        if (STRNCMP(cmd_buf, cmd_zoom)) {
+            char *iter = &cmd_buf[ARRAYSIZE(cmd_zoom)];
+
+            float scale = std::strtof(iter, &iter);
+            scale = scale ? scale : 1.0f;
+            view->scale = scale;
+
+            CommandPromptReset(ui);
+            goto CmdPromptEnd;
+        }
+    }
+
+    CmdPromptEnd:;
+    ImGui::End();
+}
+
+Vec2 ParseVec(char **iter) {
+    float x = std::strtof(*iter, iter);
+    (*iter)++; // Advancing the iter allows for a comma inbetween
+    float y = std::strtof(*iter, iter);
+
+    return Vec2(x, y);
 }
