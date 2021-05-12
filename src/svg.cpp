@@ -27,7 +27,7 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
         }
 
         if (TAGCMP(node, "rect")) {
-            doc->shapes.push_back(ParseTagRect(node, viewport, dx));
+            doc->paths.push_back(ParseTagRect(node, viewport, dx));
             continue;
         }
 
@@ -47,7 +47,7 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
         }
 
         if (TAGCMP(node, "circle")) {
-            doc->circles.push_back(ParseTagCircle(node, viewport, dx));
+            doc->paths.push_back(ParseTagCircle(node, viewport, dx));
             continue;
         }
 
@@ -58,13 +58,26 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
     }
 }
 
-Rect ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
+Path ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
     float x = RoundFloatingInput(node->attribute("x"     ).as_float() / viewport->uupix);
     float y = RoundFloatingInput(node->attribute("y"     ).as_float() / viewport->uupiy);
     float w = RoundFloatingInput(node->attribute("width" ).as_float() / viewport->uupix);
     float h = RoundFloatingInput(node->attribute("height").as_float() / viewport->uupiy);
 
-    return Rect(Vec2(x, y), Vec2(w, h), dx);
+    float left = x;
+    float right = x + w;
+    float top = y;
+    float bottom = y + h;
+
+    auto commands = std::vector<float>{
+        kPathCommandMove, left,  top,
+        kPathCommandLine, right, top,
+        kPathCommandLine, right, bottom,
+        kPathCommandLine, left,  bottom,
+        kPathCommandLine, left,  top,
+    };
+
+    return Path(commands, dx);
 }
 
 Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
@@ -174,13 +187,14 @@ Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx)
     return Path(commands, dx);
 }
 
-Circle ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
+Path ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
     float x = RoundFloatingInput(node->attribute("cx").as_float() / viewport->uupix);
     float y = RoundFloatingInput(node->attribute("cy").as_float() / viewport->uupiy);
     float r = RoundFloatingInput(node->attribute("r" ).as_float() / viewport->uupix);
 
-    return Circle(Vec2(x, y), r, dx);
+    return Path::CreateCircle(Vec2(x, y), r, dx);
 }
+
 
 bool IsFloatingPointChar(char c) {
     return IsDigit(c) ||

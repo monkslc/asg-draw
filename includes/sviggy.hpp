@@ -48,19 +48,6 @@ class Transformation {
     D2D1::Matrix3x2F Matrix(Vec2 center);
 };
 
-class Rect {
-    public:
-    Transformation transform;
-    ID2D1RectangleGeometry *geometry;
-    Rect(Vec2 pos, Vec2 size, DXState *dx);
-
-    D2D1_RECT_F Bound();
-    D2D1_RECT_F OriginalBound();
-    Vec2 Center();
-    Vec2 OriginalCenter();
-    D2D1::Matrix3x2F TransformMatrix();
-};
-
 class Text {
     public:
     Vec2 pos;
@@ -74,22 +61,13 @@ class Text {
     float Y();
 };
 
-class Circle {
-    public:
-    ID2D1EllipseGeometry *geometry;
-    Transformation transform;
-    Circle(Vec2 center, float radius, DXState *dx);
-
-    D2D1_RECT_F Bound();
-    D2D1_RECT_F OriginalBound();
-    Vec2 Center();
-    Vec2 OriginalCenter();
-    D2D1::Matrix3x2F TransformMatrix();
-};
-
 constexpr float kPathCommandMove   = (float) 'M';
 constexpr float kPathCommandCubic  = (float) 'C';
 constexpr float kPathCommandLine   = (float) 'L';
+constexpr float kPathCommandArc    = (float) 'A';
+
+constexpr float kClockwise = 1.0f;
+constexpr float kCounterClockwise = 0.0f;
 
 class Path {
     public:
@@ -97,6 +75,9 @@ class Path {
     std::vector<float> commands;
     ID2D1PathGeometry *geometry;
     Path(std::vector<float> commands, DXState *dx);
+
+    static Path CreateRect(Vec2 pos, Vec2 size, DXState *dx);
+    static Path CreateCircle(Vec2 center, float radius, DXState *dx);
 
     D2D1_RECT_F Bound();
     D2D1_RECT_F OriginalBound();
@@ -139,51 +120,12 @@ class View {
 
 class Document {
     public:
-    std::vector<Rect> shapes;
     std::vector<Text> texts;
-    std::vector<Circle> circles;
     std::vector<Path> paths;
     ActiveShape active_shape;
-    Document() {};
+    Document();
 
-    // TODO: check Hresult on calls to ContainsPoint
-    void Click(Vec2 screen_pos, View *view) {
-        D2D1_POINT_2F point = screen_pos.D2Point();
-
-
-        bool clicked_shape = false;
-
-        clicked_shape = this->CollectionHitTest(&this->shapes, point, view, ShapeType::Rect);
-        if (clicked_shape) return;
-
-        clicked_shape = this->CollectionHitTest(&this->circles, point, view, ShapeType::Circle);
-        if (clicked_shape) return;
-
-        clicked_shape = this->CollectionHitTest(&this->paths, point, view, ShapeType::Path);
-        if (clicked_shape) return;
-
-        this->active_shape = ActiveShape();
-    }
-
-    template <typename T>
-    bool CollectionHitTest(std::vector<T> *collection, D2D1_POINT_2F point, View *view, ShapeType type) {
-        D2D1::Matrix3x2F doc_to_screen = view->DocumentToScreenMat();
-
-        for (auto i=0; i<collection->size(); i++) {
-            T *shape = &(*collection)[i];
-
-            BOOL contains_point;
-            shape->geometry->StrokeContainsPoint(point, kHairline, NULL, shape->TransformMatrix() * doc_to_screen, &contains_point);
-
-            if (contains_point) {
-                printf("found you :)\n");
-                this->active_shape = ActiveShape(type, i);
-                return true;
-            }
-        }
-
-        return false;
-    }
+    void Click(Vec2 screen_pos, View *view);
 };
 
 class UIState {

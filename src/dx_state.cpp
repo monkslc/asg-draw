@@ -266,12 +266,6 @@ HRESULT DXState::Render(Document *doc, View *view, UIState *ui) {
     int width = static_cast<int>(rtSize.width);
     int height = static_cast<int>(rtSize.height);
 
-    hr = this->RenderRects(doc, view);
-    RETURN_FAIL(hr);
-
-    hr = this->RenderCircles(doc, view);
-    RETURN_FAIL(hr);
-
     hr = this->RenderPaths(doc, view);
     RETURN_FAIL(hr);
 
@@ -289,28 +283,6 @@ HRESULT DXState::Render(Document *doc, View *view, UIState *ui) {
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
     hr = this->swap_chain->Present(1, 0);
-
-    return hr;
-}
-
-HRESULT DXState::RenderRects(Document *doc, View *view) {
-    HRESULT hr = S_OK;
-
-    for (auto &shape : doc->shapes) {
-        hr = RenderShape(this, &shape);
-        RETURN_FAIL(hr);
-    }
-
-    return hr;
-}
-
-HRESULT DXState::RenderCircles(Document *doc, View *view) {
-    HRESULT hr = S_OK;
-
-    for (auto &circle : doc->circles) {
-        hr = RenderShape(this, &circle);
-        RETURN_FAIL(hr);
-    }
 
     return hr;
 }
@@ -342,13 +314,13 @@ void DXState::RenderGridLines() {
     int height = static_cast<int>(size.height);
 
     for (int x = 0; x < width; x += 10) {
-            renderTarget->DrawLine(
-                D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
-                D2D1::Point2F(static_cast<FLOAT>(x), size.height),
-                cornflowerBlueBrush,
-                0.1f
-            );
-        }
+        renderTarget->DrawLine(
+            D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
+            D2D1::Point2F(static_cast<FLOAT>(x), size.height),
+            cornflowerBlueBrush,
+            0.1f
+        );
+    }
 
     for (int y = 0; y < height; y += 10) {
         renderTarget->DrawLine(
@@ -423,7 +395,7 @@ void DXState::RenderCommandPrompt(UIState *ui, Document *doc, View *view) {
 
             Vec2 pos = ParseVec(&iter);
 
-            doc->shapes.emplace_back(pos, size, this);
+            doc->paths.push_back(Path::CreateRect(pos, size, this));
 
             CommandPromptReset(ui);
             goto CmdPromptEnd;
@@ -467,21 +439,14 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
     Transformation* transform;
     const char *shape_type;
     switch (doc->active_shape.type) {
-        case ShapeType::Rect: {
-            transform = &doc->shapes[id].transform;
-            shape_type = "Rect";
-            break;
-        }
-
-        case ShapeType::Circle: {
-            transform = &doc->circles[id].transform;
-            shape_type = "Circle";
-            break;
-        }
-
         case ShapeType::Path: {
             transform = &doc->paths[id].transform;
             shape_type = "Path";
+            break;
+        }
+
+        case ShapeType::Text: {
+            shape_type = "Text";
             break;
         }
 

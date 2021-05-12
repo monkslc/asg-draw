@@ -29,11 +29,11 @@ class ViewPort {
     }
 };
 
-Circle ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+Path ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 Path ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 Path ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
-Rect ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+Path ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 
 bool IsAlphabetical(char c);

@@ -14,36 +14,6 @@ D2D1::Matrix3x2F Transformation::Matrix(Vec2 center) {
     return rotation * translation;
 };
 
-Rect::Rect(Vec2 pos, Vec2 size, DXState* dx) : transform(Transformation()) {
-    D2D1_RECT_F rectangle = D2D1::RectF(
-        pos.x,
-        pos.y,
-        pos.x + size.x,
-        pos.y + size.y
-    );
-    dx->factory->CreateRectangleGeometry(rectangle, &this->geometry);
-};
-
-D2D1_RECT_F Rect::Bound() {
-    return ShapeBound(this);
-}
-
-D2D1_RECT_F Rect::OriginalBound() {
-    return ShapeOriginalBound(this);
-}
-
-Vec2 Rect::Center() {
-    return ShapeCenter(this);
-}
-
-Vec2 Rect::OriginalCenter() {
-    return ShapeOriginalCenter(this);
-}
-
-D2D1::Matrix3x2F Rect::TransformMatrix() {
-    return ShapeTransformMatrix(this);
-}
-
 Text::Text(Vec2 pos, std::string text, DXState* dx) : pos(pos), text(text), transform(Transformation()) {
     HRESULT hr;
 
@@ -79,31 +49,6 @@ float Text::X() {
 
 float Text::Y() {
     return this->pos.y;
-}
-
-Circle::Circle(Vec2 center, float radius, DXState *dx) : transform(Transformation()) {
-    D2D1_ELLIPSE ellipse = D2D1::Ellipse(center.D2Point(), radius, radius);
-    dx->factory->CreateEllipseGeometry(ellipse, &this->geometry);
-};
-
-D2D1_RECT_F Circle::Bound() {
-    return ShapeBound(this);
-}
-
-D2D1_RECT_F Circle::OriginalBound() {
-    return ShapeOriginalBound(this);
-}
-
-Vec2 Circle::Center() {
-    return ShapeCenter(this);
-}
-
-Vec2 Circle::OriginalCenter() {
-    return ShapeOriginalCenter(this);
-}
-
-D2D1::Matrix3x2F Circle::TransformMatrix() {
-    return ShapeTransformMatrix(this);
 }
 
 Path::Path(std::vector<float> commands, DXState *dx) : commands(commands), transform(Transformation()) {
@@ -155,6 +100,27 @@ Path::Path(std::vector<float> commands, DXState *dx) : commands(commands), trans
             continue;
         }
 
+        if (commands[i] == kPathCommandArc) {
+            Vec2 end  = Vec2(commands[i+1], commands[i+2]);
+            Vec2 size = Vec2(commands[i+3], commands[i+4]);
+            float rot = commands[i+5];
+
+            D2D1_SWEEP_DIRECTION direction = commands[i+6] == kClockwise ?
+                D2D1_SWEEP_DIRECTION_CLOCKWISE :
+                D2D1_SWEEP_DIRECTION_COUNTER_CLOCKWISE;
+
+            i += 7;
+
+            geometry_sink->AddArc(D2D1_ARC_SEGMENT {
+                end.D2Point(),
+                size.Size(),
+                rot,
+                direction,
+                D2D1_ARC_SIZE_LARGE,
+            });
+            continue;
+        }
+
         printf("Unrecognized path command at %d of %.9f :(\n", i, commands[i]);
         i++;
         continue;
@@ -162,8 +128,43 @@ Path::Path(std::vector<float> commands, DXState *dx) : commands(commands), trans
 
     geometry_sink->EndFigure(D2D1_FIGURE_END_OPEN);
     geometry_sink->Close();
-    // TODO: release geometry sink
+    geometry_sink->Release();
 };
+
+Path Path::CreateRect(Vec2 pos, Vec2 size, DXState *dx) {
+    float left  = pos.x;
+    float right = pos.x + size.x;
+    float top   = pos.y;
+    float bot   = pos.y + size.y;
+
+    auto commands = std::vector<float>{
+        kPathCommandMove, left,  top,
+        kPathCommandLine, right, top,
+        kPathCommandLine, right, bot,
+        kPathCommandLine, left,  bot,
+        kPathCommandLine, left,  top,
+    };
+
+    return Path(commands, dx);
+}
+
+Path Path::CreateCircle(Vec2 center, float radius, DXState *dx) {
+    float startx = center.x - radius;
+    float endx   = center.x + radius;
+
+    // TODO: Right now we create a circle with two arcs
+    // This doesn't seem like a great solution but I'm not sure how else
+    // to do it so I'm leaving this TODO as a reminder to come back later
+    auto commands = std::vector<float> {
+        kPathCommandMove, startx, center.y,
+        kPathCommandArc, endx, center.y, radius, radius, 0.0f, kClockwise,
+        kPathCommandMove, startx, center.y,
+        kPathCommandArc, endx, center.y, radius, radius, 0.0f, kCounterClockwise,
+    };
+
+    return Path(commands, dx);
+
+}
 
 D2D1_RECT_F Path::Bound() {
     return ShapeBound(this);
