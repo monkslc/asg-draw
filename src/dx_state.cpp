@@ -462,8 +462,8 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
     ImGui::Text("Size: (%.3f, %.3f)\n", bound.right - bound.left, bound.bottom - bound.top);
     ImGui::DragFloat("Translation x", &transform->translation.x, 0.125);
     ImGui::DragFloat("Translation y", &transform->translation.y, 0.125);
-    ImGui::DragFloat("Scale x", &transform->scale.x, 0.125);
-    ImGui::DragFloat("Scale y", &transform->scale.y, 0.125);
+    ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125);
+    ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125);
     ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f);
 
     ImGui::End();
