@@ -27,7 +27,7 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
         }
 
         if (TAGCMP(node, "rect")) {
-            doc->paths.push_back(ParseTagRect(node, viewport, dx));
+            doc->AddNewPath(ParseTagRect(node, viewport, dx));
             continue;
         }
 
@@ -37,22 +37,22 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
         }
 
         if (TAGCMP(node, "line")) {
-            doc->paths.push_back(ParseTagLine(node, viewport, dx));
+            doc->AddNewPath(ParseTagLine(node, viewport, dx));
             continue;
         }
 
         if (TAGCMP(node, "polygon")) {
-            doc->paths.push_back(ParseTagPolygon(node, viewport, dx));
+            doc->AddNewPath(ParseTagPolygon(node, viewport, dx));
             continue;
         }
 
         if (TAGCMP(node, "circle")) {
-            doc->paths.push_back(ParseTagCircle(node, viewport, dx));
+            doc->AddNewPath(ParseTagCircle(node, viewport, dx));
             continue;
         }
 
         if (TAGCMP(node, "path")) {
-            doc->paths.push_back(ParseTagPath(node, viewport, dx));
+            doc->AddNewPath(ParseTagPath(node, viewport, dx));
             continue;
         }
     }

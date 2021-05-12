@@ -1,4 +1,5 @@
 #include <d2d1.h>
+#include <unordered_set>
 
 #include "sviggy.hpp"
 
@@ -25,6 +26,27 @@ void Application::ActivateDoc(size_t index) {
 }
 
 Document::Document() {};
+
+void Document::AddNewPath(Path p) {
+    p.collection = this->NextFreeCollection();
+    this->paths.push_back(p);
+}
+
+size_t Document::NextFreeCollection() {
+    auto collections = std::unordered_set<size_t>();
+    for (auto &path : this->paths) {
+        collections.insert(path.collection);
+    }
+
+    auto collection=0;
+    while (true) {
+        if (collections.find(collection) == collections.end()) return collection;
+
+        collection++;
+    }
+
+    return collection;
+}
 
 void Document::Click(Vec2 screen_pos) {
     D2D1_POINT_2F point = screen_pos.D2Point();

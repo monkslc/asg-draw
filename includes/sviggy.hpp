@@ -75,6 +75,7 @@ class Path {
     Transformation transform;
     std::vector<float> commands;
     ID2D1PathGeometry *geometry;
+    size_t collection;
     Path(std::vector<float> commands, DXState *dx);
 
     static Path CreateRect(Vec2 pos, Vec2 size, DXState *dx);
@@ -89,9 +90,7 @@ class Path {
 
 enum class ShapeType {
     None,
-    Rect,
     Text,
-    Circle,
     Path,
 };
 
@@ -127,6 +126,8 @@ class Document {
     View view;
     Document();
 
+    void AddNewPath(Path p);
+    size_t NextFreeCollection();
     void Click(Vec2 screen_pos);
     void TranslateView(Vec2 amount);
     void ScrollZoom(bool in);

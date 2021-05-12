@@ -438,12 +438,14 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
 
     Transformation* transform;
     D2D1_RECT_F bound;
+    size_t *collection;
     const char *shape_type;
     switch (doc->active_shape.type) {
         case ShapeType::Path: {
             transform = &doc->paths[id].transform;
             bound = doc->paths[id].Bound();
             shape_type = "Path";
+            collection = &doc->paths[id].collection;
             break;
         }
 
@@ -456,10 +458,11 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             break;
     }
 
-    ImGui::Text("Shape Id: %d\n", id);
-    ImGui::Text("Shape Type: %s\n", shape_type);
-    ImGui::Text("Pos: (%.3f, %.3f)\n", bound.left, bound.top);
-    ImGui::Text("Size: (%.3f, %.3f)\n", bound.right - bound.left, bound.bottom - bound.top);
+    ImGui::Text("Shape Id: %d", id);
+    ImGui::Text("Shape Type: %s", shape_type);
+    ImGui::InputScalar("Collection", ImGuiDataType_U32, collection);
+    ImGui::Text("Pos: (%.3f, %.3f)", bound.left, bound.top);
+    ImGui::Text("Size: (%.3f, %.3f)", bound.right - bound.left, bound.bottom - bound.top);
     ImGui::DragFloat("Translation x", &transform->translation.x, 0.125);
     ImGui::DragFloat("Translation y", &transform->translation.y, 0.125);
     ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125);
@@ -468,8 +471,6 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
 
     ImGui::End();
 }
-
-
 
 Vec2 ParseVec(char **iter) {
     float x = std::strtof(*iter, iter);
