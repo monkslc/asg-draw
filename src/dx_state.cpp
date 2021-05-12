@@ -437,10 +437,12 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
     ImGui::Begin("Active Selection");
 
     Transformation* transform;
+    D2D1_RECT_F bound;
     const char *shape_type;
     switch (doc->active_shape.type) {
         case ShapeType::Path: {
             transform = &doc->paths[id].transform;
+            bound = doc->paths[id].Bound();
             shape_type = "Path";
             break;
         }
@@ -456,6 +458,8 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
 
     ImGui::Text("Shape Id: %d\n", id);
     ImGui::Text("Shape Type: %s\n", shape_type);
+    ImGui::Text("Pos: (%.3f, %.3f)\n", bound.left, bound.top);
+    ImGui::Text("Size: (%.3f, %.3f)\n", bound.right - bound.left, bound.bottom - bound.top);
     ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f);
     ImGui::DragFloat("Translation x", &transform->translation.x);
     ImGui::DragFloat("Translation y", &transform->translation.y);
