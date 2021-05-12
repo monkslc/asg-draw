@@ -43,6 +43,7 @@ class Vec2 {
 class Transformation {
     public:
     Vec2 translation;
+    Vec2 scale;
     float rotation;
     Transformation();
     D2D1::Matrix3x2F Matrix(Vec2 center);

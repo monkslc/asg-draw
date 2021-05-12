@@ -7,11 +7,12 @@
 // Maybe a messagebox pops up to the user asking them if they want to close
 // the application
 
-Transformation::Transformation() : translation(Vec2(0.0f, 0.0f)), rotation(0.0f) {};
+Transformation::Transformation() : translation(Vec2(0.0f, 0.0f)), scale(Vec2(1.0, 1.0)), rotation(0.0f) {};
 D2D1::Matrix3x2F Transformation::Matrix(Vec2 center) {
     D2D1::Matrix3x2F rotation = D2D1::Matrix3x2F::Rotation(this->rotation, center.D2Point());
     D2D1::Matrix3x2F translation = D2D1::Matrix3x2F::Translation(this->translation.Size());
-    return rotation * translation;
+    D2D1::Matrix3x2F scale = D2D1::Matrix3x2F::Scale(this->scale.Size(), center.D2Point());
+    return rotation * scale * translation;
 };
 
 Text::Text(Vec2 pos, std::string text, DXState* dx) : pos(pos), text(text), transform(Transformation()) {
