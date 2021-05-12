@@ -7,6 +7,7 @@ clang --debug -I ./includes -I external -o sviggy.exe `
     src/view.cpp `
     src/vec.cpp `
     src/document.cpp `
+    src/application.cpp `
     external/pugixml.cpp `
     external/imgui_demo.cpp `
     external/imgui_impl_dx11.cpp `

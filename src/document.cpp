@@ -4,10 +4,10 @@
 
 Document::Document() {};
 
-void Document::Click(Vec2 screen_pos, View *view) {
+void Document::Click(Vec2 screen_pos) {
     D2D1_POINT_2F point = screen_pos.D2Point();
 
-    D2D1::Matrix3x2F doc_to_screen = view->DocumentToScreenMat();
+    D2D1::Matrix3x2F doc_to_screen = this->view.DocumentToScreenMat();
 
     for (auto i=0; i<this->paths.size(); i++) {
         Path *path = &this->paths[i];
@@ -23,4 +23,16 @@ void Document::Click(Vec2 screen_pos, View *view) {
     }
 
     this->active_shape = ActiveShape();
+}
+
+void Document::TranslateView(Vec2 amount) {
+    this->view.start += amount;
+}
+
+void Document::ScrollZoom(bool in) {
+    this->view.ScrollZoom(in);
+}
+
+Vec2 Document::MousePos() {
+   return  this->view.MousePos();
 }

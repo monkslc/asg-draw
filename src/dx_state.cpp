@@ -243,7 +243,7 @@ HRESULT DXState::Resize(UINT width, UINT height) {
     return hr;
 }
 
-HRESULT DXState::Render(Document *doc, View *view, UIState *ui) {
+HRESULT DXState::Render(Document *doc, UIState *ui) {
     HRESULT hr;
 
     ImGui_ImplDX11_NewFrame();
@@ -251,8 +251,8 @@ HRESULT DXState::Render(Document *doc, View *view, UIState *ui) {
     ImGui::NewFrame();
 
     this->RenderDemoWindow(ui);
-    this->RenderDebugWindow(ui, view);
-    this->RenderCommandPrompt(ui, doc, view);
+    this->RenderDebugWindow(ui, doc);
+    this->RenderCommandPrompt(ui, doc);
     this->RenderActiveSelectionWindow(doc);
 
     this->renderTarget->BeginDraw();
@@ -260,16 +260,16 @@ HRESULT DXState::Render(Document *doc, View *view, UIState *ui) {
 
     this->RenderGridLines();
 
-    this->renderTarget->SetTransform(view->DocumentToScreenMat());
+    this->renderTarget->SetTransform(doc->view.DocumentToScreenMat());
 
     D2D1_SIZE_F rtSize = this->renderTarget->GetSize();
     int width = static_cast<int>(rtSize.width);
     int height = static_cast<int>(rtSize.height);
 
-    hr = this->RenderPaths(doc, view);
+    hr = this->RenderPaths(doc);
     RETURN_FAIL(hr);
 
-    this->RenderText(doc, view);
+    this->RenderText(doc);
 
     hr = this->renderTarget->EndDraw();
     if (hr == D2DERR_RECREATE_TARGET) {
@@ -287,7 +287,7 @@ HRESULT DXState::Render(Document *doc, View *view, UIState *ui) {
     return hr;
 }
 
-HRESULT DXState::RenderPaths(Document *doc, View *view) {
+HRESULT DXState::RenderPaths(Document *doc) {
     HRESULT hr = S_OK;
 
     for (auto &path : doc->paths) {
@@ -298,7 +298,7 @@ HRESULT DXState::RenderPaths(Document *doc, View *view) {
     return hr;
 }
 
-void DXState::RenderText(Document *doc, View *view) {
+void DXState::RenderText(Document *doc) {
     for (auto &text : doc->texts) {
         // So we could set the transform here but then we lose the original one
         // Maybe we create a new one, badda bing batta boom it then do our thing
@@ -338,15 +338,15 @@ void DXState::RenderDemoWindow(UIState *ui) {
     ImGui::ShowDemoWindow();
 }
 
-void DXState::RenderDebugWindow(UIState *ui, View *view) {
+void DXState::RenderDebugWindow(UIState *ui, Document *doc) {
     if (!ui->show_debug) return;
 
     ImGuiIO& io = ImGui::GetIO();
 
     ImGui::Begin("Debug");
     ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-    ImGui::Text("Mouse Screen: (%.3f, %.3f)", view->mouse_pos_screen.x, view->mouse_pos_screen.y);
-    ImGui::Text("Mouse Document: (%.3f, %.3f)", view->MousePos().x, view->MousePos().y);
+    ImGui::Text("Mouse Screen: (%.3f, %.3f)", doc->view.mouse_pos_screen.x, doc->view.mouse_pos_screen.y);
+    ImGui::Text("Mouse Document: (%.3f, %.3f)", doc->MousePos().x, doc->MousePos().y);
     ImGui::End();
 }
 
@@ -371,7 +371,7 @@ char cmd_rect[] = "rect";
 char cmd_view[] = "view";
 char cmd_zoom[] = "zoom";
 
-void DXState::RenderCommandPrompt(UIState *ui, Document *doc, View *view) {
+void DXState::RenderCommandPrompt(UIState *ui, Document *doc) {
     if (!ui->show_command_prompt) {
         was_visible_previous_frame = false;
         return;
@@ -405,7 +405,7 @@ void DXState::RenderCommandPrompt(UIState *ui, Document *doc, View *view) {
             char *iter = &cmd_buf[ARRAYSIZE(cmd_view)];
 
             Vec2 pos = ParseVec(&iter);
-            view->start = pos;
+            doc->view.start = pos;
 
             CommandPromptReset(ui);
             goto CmdPromptEnd;
@@ -416,7 +416,7 @@ void DXState::RenderCommandPrompt(UIState *ui, Document *doc, View *view) {
 
             float scale = std::strtof(iter, &iter);
             scale = scale ? scale : 1.0f;
-            view->scale = scale;
+            doc->view.scale = scale;
 
             CommandPromptReset(ui);
             goto CmdPromptEnd;

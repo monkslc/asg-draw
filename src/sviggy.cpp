@@ -22,9 +22,8 @@
 #include "sviggy.hpp"
 
 DXState dxstate;
-Document doc;
+Application app;
 UIState ui;
-View view;
 
 #define FLAGCMP(num, flag) num & flag
 
@@ -72,7 +71,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     ShowWindow(hwnd, nCmdShow);
 
     // This is here just for testing purposes so we have something to look at on load
-    LoadSVGFile((char *)"test-svg.svg", &doc, &dxstate);
+    LoadSVGFile((char *)"test-svg.svg", app.ActiveDoc(), &dxstate);
 
     MSG msg = { };
     while (GetMessage(&msg, NULL, 0, 0))
@@ -117,7 +116,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             hr = dxstate.CreateDeviceResources(hwnd);
             ExitOnFailure(hr);
 
-            hr = dxstate.Render(&doc, &view, &ui);
+            hr = dxstate.Render(app.ActiveDoc(), &ui);
             ExitOnFailure(hr);
             return 0;
         }
@@ -132,29 +131,29 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 float screen_x = LOWORD(lParam);
                 float screen_y = HIWORD(lParam);
 
-                doc.Click(Vec2(screen_x, screen_y), &view);
+                app.ActiveDoc()->Click(Vec2(screen_x, screen_y));
                 return 0;
             }
 
             case WM_MOUSEWHEEL: {
                 bool scroll_direction = GET_WHEEL_DELTA_WPARAM(wParam) > 0;
-                view.Scale(scroll_direction);
+                app.ActiveDoc()->ScrollZoom(scroll_direction);
                 return 0;
             }
 
             case WM_MOUSEMOVE: {
-                Vec2 original_mouse = view.MousePos();
+                Vec2 original_mouse = app.ActiveDoc()->MousePos();
 
                 Vec2 new_mouse_screen = Vec2(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-                view.mouse_pos_screen = new_mouse_screen;
+                app.ActiveDoc()->view.mouse_pos_screen = new_mouse_screen;
 
-                Vec2 new_mouse = view.MousePos();
+                Vec2 new_mouse = app.ActiveDoc()->MousePos();
 
                 // TODO: I think this should be RBUTTON but right click and drag doesn't work with
                 // the macboook trackpad on bootcamp
                 if (FLAGCMP(wParam, MK_LBUTTON)) {
                     Vec2 change = original_mouse - new_mouse;
-                    view.start += change;
+                    app.ActiveDoc()->TranslateView(change);
                 }
 
                 return 0;
@@ -167,28 +166,36 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         switch (uMsg) {
             case WM_KEYDOWN: {
                 switch (wParam) {
-                    case VK_LEFT:
-                        view.start.x -= kTranslationDelta;
+                    case VK_LEFT: {
+                        Vec2 amount = Vec2(-kTranslationDelta, 0.0f);
+                        app.ActiveDoc()->TranslateView(amount);
                         break;
+                    }
 
-                    case VK_RIGHT:
-                        view.start.x += kTranslationDelta;
+                    case VK_RIGHT: {
+                        Vec2 amount = Vec2(kTranslationDelta, 0.0f);
+                        app.ActiveDoc()->TranslateView(amount);
                         break;
+                    }
 
-                    case VK_DOWN:
-                        view.start.y += kTranslationDelta;
+                    case VK_DOWN: {
+                        Vec2 amount = Vec2(0.0f, kTranslationDelta);
+                        app.ActiveDoc()->TranslateView(amount);
                         break;
+                    }
 
-                    case VK_UP:
-                        view.start.y -= kTranslationDelta;
+                    case VK_UP: {
+                        Vec2 amount = Vec2(0.0f, -kTranslationDelta);
+                        app.ActiveDoc()->TranslateView(amount);
                         break;
+                    }
 
                     case VK_OEM_PLUS:
-                        view.Scale(true);
+                        app.ActiveDoc()->ScrollZoom(true);
                         break;
 
                     case VK_OEM_MINUS:
-                        view.Scale(false);
+                        app.ActiveDoc()->ScrollZoom(false);
                         break;
 
                     case 'Y':
@@ -204,6 +211,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         break;
 
                     default:
+                        if (wParam >= '0' && wParam <= '9') {
+                            app.ActivateDoc(wParam - '0');
+                        }
                         return 0;
                 }
                 return 0;

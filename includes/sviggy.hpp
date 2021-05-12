@@ -112,7 +112,7 @@ class View {
 
     Vec2 GetDocumentPosition(Vec2 screen_pos);
     Vec2 MousePos();
-    void Scale(bool in);
+    void ScrollZoom(bool in);
     D2D1::Matrix3x2F ScaleMatrix();
     D2D1::Matrix3x2F TranslationMatrix();
     D2D1::Matrix3x2F DocumentToScreenMat();
@@ -124,9 +124,24 @@ class Document {
     std::vector<Text> texts;
     std::vector<Path> paths;
     ActiveShape active_shape;
+    View view;
     Document();
 
-    void Click(Vec2 screen_pos, View *view);
+    void Click(Vec2 screen_pos);
+    void TranslateView(Vec2 amount);
+    void ScrollZoom(bool in);
+    Vec2 MousePos();
+};
+
+class Application {
+    public:
+    std::vector<Document> documents;
+    size_t active_doc;
+    Application();
+
+    Document* ActiveDoc();
+    View* ActiveView();
+    void ActivateDoc(size_t index);
 };
 
 class UIState {
@@ -164,15 +179,15 @@ class DXState {
     HRESULT DiscardDeviceResources();
     void Teardown();
     HRESULT Resize(UINT width, UINT height);
-    HRESULT Render(Document *doc, View *view, UIState *ui);
-    HRESULT RenderRects(Document *doc, View *view);
-    HRESULT RenderCircles(Document *doc, View *view);
-    HRESULT RenderPaths(Document *doc, View *view);
-    void RenderText(Document *doc, View *view);
+    HRESULT Render(Document *doc,  UIState *ui);
+    HRESULT RenderRects(Document *doc);
+    HRESULT RenderCircles(Document *doc);
+    HRESULT RenderPaths(Document *doc);
+    void RenderText(Document *doc);
     void RenderGridLines();
     void RenderDemoWindow(UIState *ui);
-    void RenderDebugWindow(UIState *ui, View *view);
-    void RenderCommandPrompt(UIState *ui, Document *doc, View *view);
+    void RenderDebugWindow(UIState *ui, Document *doc);
+    void RenderCommandPrompt(UIState *ui, Document *doc);
     void RenderActiveSelectionWindow(Document *doc);
 };
 

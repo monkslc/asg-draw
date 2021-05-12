@@ -9,8 +9,8 @@ Vec2 View::MousePos() {
     return this->GetDocumentPosition(this->mouse_pos_screen);
 }
 
-void View::Scale(bool in) {
-    // We preserve the mouse document position when scaling in and out
+// Scroll zoom adjusts the scale while preservice the mouse position in the document
+void View::ScrollZoom(bool in) {
     Vec2 original_mouse_pos = this->MousePos();
 
     float delta = in ? 1 + kScaleDelta : 1-kScaleDelta;
