@@ -28,24 +28,14 @@ void Application::ActivateDoc(size_t index) {
 Document::Document() {};
 
 void Document::AddNewPath(Path p) {
-    p.collection = this->NextFreeCollection();
+    p.collection = this->NextCollection();
     this->paths.push_back(p);
 }
 
-size_t Document::NextFreeCollection() {
-    auto collections = std::unordered_set<size_t>();
-    for (auto &path : this->paths) {
-        collections.insert(path.collection);
-    }
-
-    auto collection=0;
-    while (true) {
-        if (collections.find(collection) == collections.end()) return collection;
-
-        collection++;
-    }
-
-    return collection;
+size_t Document::NextCollection() {
+    size_t next = this->next_collection;
+    this->next_collection++;
+    return next;
 }
 
 bool EntirelyContains(D2D1_RECT_F* outer, D2D1_RECT_F* inner) {

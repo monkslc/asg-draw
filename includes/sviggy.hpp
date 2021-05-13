@@ -16,7 +16,7 @@
 
 constexpr float kPixelsPerInch = 50;
 constexpr float kScaleDelta = 0.1;
-constexpr float kTranslationDelta = 0.125;
+constexpr float kTranslationDelta = 1;
 constexpr float kHairline = 0.03;
 
 // forward declarations
@@ -124,10 +124,11 @@ class Document {
     std::vector<Path> paths;
     std::vector<ActiveShape> active_shapes;
     View view;
+    size_t next_collection = 0;
     Document();
 
     void AddNewPath(Path p);
-    size_t NextFreeCollection();
+    size_t NextCollection();
     void SelectShape(Vec2 screen_pos);
     void SelectShapes(Vec2 start, Vec2 end);
     void TranslateView(Vec2 amount);
