@@ -1,5 +1,5 @@
 #include <d2d1.h>
-#include <unordered_set>
+#include <unordered_map>
 
 #include "sviggy.hpp"
 
@@ -100,6 +100,27 @@ void Document::ScrollZoom(bool in) {
 
 Vec2 Document::MousePos() {
    return  this->view.MousePos();
+}
+
+void Document::RunPipeline() {
+    auto collections = this->Collections();
+
+    for (auto &[k, v] : collections) {
+        printf("Collection %d had %d shapes\n", k, v.size());
+    }
+
+    printf("\n\n\n");
+}
+
+std::unordered_map<size_t, std::vector<size_t>> Document::Collections() {
+    auto collections = std::unordered_map<size_t, std::vector<size_t>>();
+
+    for (auto i=0; i<this->paths.size(); i++) {
+        Path *path = &this->paths[i];
+        collections[path->collection].push_back(i);
+    }
+
+    return collections;
 }
 
 View::View() : start(Vec2(0.0f, 0.0f)), mouse_pos_screen(Vec2(0.0f, 0.0f)) {};

@@ -7,6 +7,7 @@
 #include <d2d1.h>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include <system_error>
 
@@ -134,6 +135,10 @@ class Document {
     void TranslateView(Vec2 amount);
     void ScrollZoom(bool in);
     Vec2 MousePos();
+
+    // Pipeline methods
+    void RunPipeline();
+    std::unordered_map<size_t, std::vector<size_t>> Collections();
 };
 
 class Application {

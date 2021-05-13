@@ -232,6 +232,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         ui.show_command_prompt = !ui.show_command_prompt;
                         break;
 
+                    case 'P':
+                        app.ActiveDoc()->RunPipeline();
+                        break;
+
                     default:
                         if (wParam >= '0' && wParam <= '9') {
                             app.ActivateDoc(wParam - '0');
