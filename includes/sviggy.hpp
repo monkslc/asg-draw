@@ -77,6 +77,7 @@ class Path {
     std::vector<float> commands;
     ID2D1PathGeometry *geometry;
     size_t collection;
+    std::vector<std::string> tags;
     Path(std::vector<float> commands, DXState *dx);
 
     static Path CreateRect(Vec2 pos, Vec2 size, DXState *dx);

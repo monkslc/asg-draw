@@ -372,8 +372,8 @@ static char cmd_buf[256] = {0};
 static bool was_visible_previous_frame = false;
 ImGuiInputTextFlags cmd_flags = ImGuiInputTextFlags_EnterReturnsTrue;
 
-void ClearCmdBuf() {
-    char *iter = &cmd_buf[0];
+void ClearBuf(char *buf) {
+    char *iter = buf;
     while (*iter) {
         *iter = NULL;
         iter++;
@@ -381,7 +381,7 @@ void ClearCmdBuf() {
 }
 
 void CommandPromptReset(UIState *ui) {
-    ClearCmdBuf();
+    ClearBuf(cmd_buf);
     ui->show_command_prompt = false;
 }
 
@@ -445,6 +445,8 @@ void DXState::RenderCommandPrompt(UIState *ui, Document *doc) {
     ImGui::End();
 }
 
+char tag_buf[256] = {0};
+
 void DXState::RenderActiveSelectionWindow(Document *doc) {
     if (doc->active_shapes.size() == 0) return;
 
@@ -457,6 +459,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             D2D1_RECT_F bound;
             size_t *collection;
             const char *shape_type;
+            std::vector<std::string> *tags;
 
             switch (shape.type) {
                 case ShapeType::Path: {
@@ -464,6 +467,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
                     bound = doc->paths[id].Bound();
                     shape_type = "Path";
                     collection = &doc->paths[id].collection;
+                    tags = &doc->paths[id].tags;
                     break;
                 }
 
@@ -489,6 +493,17 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125);
 
             ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f);
+
+            ImGui::Text("Tags:");
+            for (auto i=0; i<tags->size(); i++) {
+                std::string *tag = &(*tags)[i];
+                ImGui::Text("%s", tag->c_str());
+            }
+
+            if (ImGui::InputText("Add Tag", tag_buf, ARRAYSIZE(tag_buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
+                tags->push_back(std::string(tag_buf));
+                ClearBuf(tag_buf);
+            }
 
             ImGui::TreePop();
         }
