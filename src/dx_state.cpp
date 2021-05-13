@@ -494,6 +494,14 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
         }
     }
 
+    if(ImGui::Button("Collect")) {
+        size_t collection = doc->NextCollection();
+        for (ActiveShape &shape_ref : doc->active_shapes) {
+            Path *path = &doc->paths[shape_ref.index];
+            path->collection = collection;
+        }
+    }
+
 
     ImGui::End();
 }
