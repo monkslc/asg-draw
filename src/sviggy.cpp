@@ -131,7 +131,31 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 float screen_x = LOWORD(lParam);
                 float screen_y = HIWORD(lParam);
 
-                app.ActiveDoc()->Click(Vec2(screen_x, screen_y));
+                Vec2 screen_pos = Vec2(screen_x, screen_y);
+
+                ui.is_selecting    = true;
+                ui.selection_start = screen_pos;
+                return 0;
+            }
+
+            case WM_LBUTTONUP: {
+                ui.is_selecting = false;
+
+                float screen_x = LOWORD(lParam);
+                float screen_y = HIWORD(lParam);
+
+                Vec2 selection_end = Vec2(screen_x, screen_y);
+
+                Vec2 difference = selection_end - ui.selection_start;
+                if (std::abs(difference.x) <= 3 && std::abs(difference.y) <= 3) {
+                    app.ActiveDoc()->SelectShape(ui.selection_start);
+                    return 0;
+                }
+
+                Vec2 doc_selection_start = app.ActiveDoc()->view.GetDocumentPosition(ui.selection_start);
+                Vec2 doc_selection_end   = app.ActiveDoc()->view.GetDocumentPosition(selection_end);
+
+                app.ActiveDoc()->SelectShapes(doc_selection_start, doc_selection_end);
                 return 0;
             }
 
@@ -149,9 +173,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
                 Vec2 new_mouse = app.ActiveDoc()->MousePos();
 
-                // TODO: I think this should be RBUTTON but right click and drag doesn't work with
-                // the macboook trackpad on bootcamp
-                if (FLAGCMP(wParam, MK_LBUTTON)) {
+                if (FLAGCMP(wParam, MK_RBUTTON)) {
                     Vec2 change = original_mouse - new_mouse;
                     app.ActiveDoc()->TranslateView(change);
                 }

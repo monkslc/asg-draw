@@ -46,6 +46,22 @@ HRESULT DXState::CreateDeviceIndependentResources() {
     debug_text_format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
     debug_text_format->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
 
+    float dashes[] = {3.0f};
+    hr = this->factory->CreateStrokeStyle(
+        D2D1::StrokeStyleProperties(
+            D2D1_CAP_STYLE_FLAT,
+            D2D1_CAP_STYLE_FLAT,
+            D2D1_CAP_STYLE_ROUND,
+            D2D1_LINE_JOIN_MITER,
+            10.0f,
+            D2D1_DASH_STYLE_CUSTOM,
+            0.0f
+        ),
+        dashes,
+        ARRAYSIZE(dashes),
+        &this->selection_stroke
+    );
+
     return hr;
 }
 
@@ -225,6 +241,7 @@ void DXState::Teardown() {
     SafeRelease(&this->debug_text_format);
     SafeRelease(&this->factory);
     SafeRelease(&this->write_factory);
+    SafeRelease(&this->selection_stroke);
 }
 
 HRESULT DXState::Resize(UINT width, UINT height) {
@@ -250,13 +267,14 @@ HRESULT DXState::Render(Document *doc, UIState *ui) {
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
+    this->renderTarget->BeginDraw();
+    this->renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
+
     this->RenderDemoWindow(ui);
     this->RenderDebugWindow(ui, doc);
     this->RenderCommandPrompt(ui, doc);
     this->RenderActiveSelectionWindow(doc);
-
-    this->renderTarget->BeginDraw();
-    this->renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
+    this->RenderActiveSelectionBox(doc, ui);
 
     this->RenderGridLines();
 
@@ -428,48 +446,70 @@ void DXState::RenderCommandPrompt(UIState *ui, Document *doc) {
 }
 
 void DXState::RenderActiveSelectionWindow(Document *doc) {
-    if (doc->active_shape.type == ShapeType::None) {
-       return;
-    }
-
-    int id = doc->active_shape.index;
+    if (doc->active_shapes.size() == 0) return;
 
     ImGui::Begin("Active Selection");
 
-    Transformation* transform;
-    D2D1_RECT_F bound;
-    size_t *collection;
-    const char *shape_type;
-    switch (doc->active_shape.type) {
-        case ShapeType::Path: {
-            transform = &doc->paths[id].transform;
-            bound = doc->paths[id].Bound();
-            shape_type = "Path";
-            collection = &doc->paths[id].collection;
-            break;
-        }
+    for (auto &shape : doc->active_shapes) {
+        int id = shape.index;
+        if (ImGui::TreeNode(&shape, "Shape %d\n", id)) {
+            Transformation* transform;
+            D2D1_RECT_F bound;
+            size_t *collection;
+            const char *shape_type;
 
-        case ShapeType::Text: {
-            shape_type = "Text";
-            break;
-        }
+            switch (shape.type) {
+                case ShapeType::Path: {
+                    transform = &doc->paths[id].transform;
+                    bound = doc->paths[id].Bound();
+                    shape_type = "Path";
+                    collection = &doc->paths[id].collection;
+                    break;
+                }
 
-        default:
-            break;
+                case ShapeType::Text: {
+                    shape_type = "Text";
+                    break;
+                }
+
+                default:
+                    break;
+            }
+
+            ImGui::Text("Shape Id: %d", id);
+            ImGui::Text("Shape Type: %s", shape_type);
+            ImGui::InputScalar("Collection", ImGuiDataType_U32, collection);
+
+            ImGui::Text("Pos: (%.3f, %.3f)", bound.left, bound.top);
+            ImGui::Text("Size: (%.3f, %.3f)", bound.right - bound.left, bound.bottom - bound.top);
+
+            ImGui::DragFloat("Translation x", &transform->translation.x, 0.125);
+            ImGui::DragFloat("Translation y", &transform->translation.y, 0.125);
+            ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125);
+            ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125);
+
+            ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f);
+
+            ImGui::TreePop();
+        }
     }
 
-    ImGui::Text("Shape Id: %d", id);
-    ImGui::Text("Shape Type: %s", shape_type);
-    ImGui::InputScalar("Collection", ImGuiDataType_U32, collection);
-    ImGui::Text("Pos: (%.3f, %.3f)", bound.left, bound.top);
-    ImGui::Text("Size: (%.3f, %.3f)", bound.right - bound.left, bound.bottom - bound.top);
-    ImGui::DragFloat("Translation x", &transform->translation.x, 0.125);
-    ImGui::DragFloat("Translation y", &transform->translation.y, 0.125);
-    ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125);
-    ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125);
-    ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f);
 
     ImGui::End();
+}
+
+void DXState::RenderActiveSelectionBox(Document *doc, UIState *ui) {
+    if (!ui->is_selecting) return;
+
+    float left  = ui->selection_start.x;
+    float top   = ui->selection_start.y;
+    float right = doc->view.mouse_pos_screen.x;
+    float bot   = doc->view.mouse_pos_screen.y;
+
+    D2D1_RECT_F box = D2D1::RectF(left, top, right, bot);
+
+    this->renderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+    this->renderTarget->DrawRectangle(box, this->blackBrush, 1.0, this->selection_stroke);
 }
 
 Vec2 ParseVec(char **iter) {

@@ -122,13 +122,14 @@ class Document {
     public:
     std::vector<Text> texts;
     std::vector<Path> paths;
-    ActiveShape active_shape;
+    std::vector<ActiveShape> active_shapes;
     View view;
     Document();
 
     void AddNewPath(Path p);
     size_t NextFreeCollection();
-    void Click(Vec2 screen_pos);
+    void SelectShape(Vec2 screen_pos);
+    void SelectShapes(Vec2 start, Vec2 end);
     void TranslateView(Vec2 amount);
     void ScrollZoom(bool in);
     Vec2 MousePos();
@@ -150,6 +151,8 @@ class UIState {
     bool show_debug = false;
     bool show_command_prompt = false;
     bool show_demo_window = false;
+    bool is_selecting = false;
+    Vec2 selection_start = Vec2(0.0f, 0.0f);
 };
 
 
@@ -159,6 +162,7 @@ class DXState {
     ID2D1Factory* factory;
     IDWriteFactory *write_factory;
     IDWriteTextFormat *debug_text_format;
+    ID2D1StrokeStyle *selection_stroke;
 
     // Device dependent Direct2D resources
     ID2D1RenderTarget* renderTarget;
@@ -190,6 +194,7 @@ class DXState {
     void RenderDebugWindow(UIState *ui, Document *doc);
     void RenderCommandPrompt(UIState *ui, Document *doc);
     void RenderActiveSelectionWindow(Document *doc);
+    void RenderActiveSelectionBox(Document *doc, UIState *ui);
 };
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);

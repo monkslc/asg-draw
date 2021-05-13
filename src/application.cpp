@@ -48,7 +48,39 @@ size_t Document::NextFreeCollection() {
     return collection;
 }
 
-void Document::Click(Vec2 screen_pos) {
+bool EntirelyContains(D2D1_RECT_F* outer, D2D1_RECT_F* inner) {
+    return
+        outer->left   <= inner->left  &&
+        outer->top    <= inner->top   &&
+        outer->right  >= inner->right &&
+        outer->bottom >= inner->bottom;
+}
+
+void Document::SelectShapes(Vec2 mousedown, Vec2 mouseup) {
+    auto new_selection = std::vector<ActiveShape>();
+
+    float minx = std::min<float>(mousedown.x, mouseup.x);
+    float miny = std::min<float>(mousedown.y, mouseup.y);
+    float maxx = std::max<float>(mousedown.x, mouseup.x);
+    float maxy = std::max<float>(mousedown.y, mouseup.y);
+
+    Vec2 start = Vec2(minx, miny);
+    Vec2 end   = Vec2(maxx, maxy);
+
+    D2D1_RECT_F selection = D2D1::RectF(start.x, start.y, end.x, end.y);
+    for (auto i=0; i<this->paths.size(); i++) {
+       Path *path = &this->paths[i];
+       D2D1_RECT_F bound = path->Bound();
+
+       if (EntirelyContains(&selection, &bound)) {
+           new_selection.emplace_back(ShapeType::Path, i);
+       }
+    }
+
+    this->active_shapes = new_selection;
+}
+
+void Document::SelectShape(Vec2 screen_pos) {
     D2D1_POINT_2F point = screen_pos.D2Point();
 
     D2D1::Matrix3x2F doc_to_screen = this->view.DocumentToScreenMat();
@@ -60,12 +92,12 @@ void Document::Click(Vec2 screen_pos) {
         path->geometry->StrokeContainsPoint(point, kHairline, NULL, path->TransformMatrix() * doc_to_screen, &contains_point);
 
         if (contains_point) {
-            this->active_shape = ActiveShape(ShapeType::Path, i);
+            this->active_shapes = std::vector<ActiveShape>{ActiveShape(ShapeType::Path, i)};
             return;
         }
     }
 
-    this->active_shape = ActiveShape();
+    this->active_shapes = std::vector<ActiveShape>();
 }
 
 void Document::TranslateView(Vec2 amount) {
