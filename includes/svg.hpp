@@ -29,6 +29,7 @@ class ViewPort {
     }
 };
 
+// Parsing SVG Tag Methods
 Path ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 Path ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
@@ -36,17 +37,21 @@ Path ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, DXState *
 Path ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 
+// Generic Parsing Methods
 bool IsAlphabetical(char c);
 bool IsDigit(char c);
 bool IsFloatingPointChar(char c);
 bool IsWhitespace(char c);
 float ParseFloat(char **path, float uupi);
-void EatWhitespace(char **iter);
+Vec2 ParsePoint(char **iter, ViewPort *viewport, Vec2 *pos, bool relative);
 
 void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_node_iterator> nodes, Document *doc, DXState *dx);
 void LoadSVGFile(char *file, Document *doc, DXState *dx);
-void ParseCommandLetter(float command, std::vector<float> *commands, ViewPort *viewport, char **iter, uint8_t n, Vec2 *pos, bool relative);
-void ParseCommandPoints(std::vector<float> *commands, ViewPort *viewport, char **iter, uint8_t n, Vec2 *last_pos, bool relative);
-Vec2 ParsePoint(char **iter, ViewPort *viewport);
+
+// Parsing Path Command Methods
+void ParsePathCmdMove(PathBuilder *builder, ViewPort *viewport, char **path, Vec2 *pos, bool relative);
+void ParsePathCmdLine(PathBuilder *builder, ViewPort *viewport, char **path, Vec2 *pos, bool relative);
+void ParsePathCmdCubic(PathBuilder *builder, ViewPort *viewport, char **path, Vec2 *pos, bool relative);
+void ParsePathCmdClose(PathBuilder *builder, char **path, Vec2 *pos, Vec2 sub_path_start);
 
 #endif

@@ -74,12 +74,16 @@ constexpr float kCounterClockwise = 0.0f;
 class Path {
     public:
     Transformation transform;
-    std::vector<float> commands;
     ID2D1PathGeometry *geometry;
     size_t collection;
     std::vector<std::string> tags;
-    Path(std::vector<float> commands, DXState *dx);
+    Path(ID2D1PathGeometry *geometry);
 
+    void Free() {
+        this->geometry->Release();
+    }
+
+    static Path CreateLine(Vec2 from, Vec2 to, DXState *dx);
     static Path CreateRect(Vec2 pos, Vec2 size, DXState *dx);
     static Path CreateCircle(Vec2 center, float radius, DXState *dx);
 
@@ -88,6 +92,21 @@ class Path {
     Vec2 Center();
     Vec2 OriginalCenter();
     D2D1::Matrix3x2F TransformMatrix();
+};
+
+class PathBuilder {
+    public:
+    ID2D1GeometrySink *geometry_sink;
+    ID2D1PathGeometry *geometry;
+    bool has_open_figure;
+    PathBuilder(DXState *dx);
+
+    void Move(Vec2 to);
+    void Line(Vec2 to);
+    void Cubic(Vec2 c1, Vec2 c2, Vec2 end);
+    void Arc(Vec2 end, Vec2 size, float rot, D2D1_SWEEP_DIRECTION direction);
+    void Close();
+    Path Build();
 };
 
 enum class ShapeType {

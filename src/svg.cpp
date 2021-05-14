@@ -64,20 +64,7 @@ Path ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx)
     float w = RoundFloatingInput(node->attribute("width" ).as_float() / viewport->uupix);
     float h = RoundFloatingInput(node->attribute("height").as_float() / viewport->uupiy);
 
-    float left = x;
-    float right = x + w;
-    float top = y;
-    float bottom = y + h;
-
-    auto commands = std::vector<float>{
-        kPathCommandMove, left,  top,
-        kPathCommandLine, right, top,
-        kPathCommandLine, right, bottom,
-        kPathCommandLine, left,  bottom,
-        kPathCommandLine, left,  top,
-    };
-
-    return Path(commands, dx);
+    return Path::CreateRect(Vec2(x, y), Vec2(w, h), dx);
 }
 
 Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
@@ -93,53 +80,35 @@ Path ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx)
     float x2 = RoundFloatingInput(node->attribute("x2").as_float() / viewport->uupix);
     float y2 = RoundFloatingInput(node->attribute("y2").as_float() / viewport->uupiy);
 
-    auto commands = std::vector<float>{
-        kPathCommandMove, x1, y1,
-        kPathCommandLine, x2, y2,
-    };
-
-    return Path(commands, dx);
+    return Path::CreateLine(Vec2(x1, y1), Vec2(x2, y2), dx);
 }
 
 Path ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
-    auto commands = std::vector<float>();
-    commands.push_back(kPathCommandMove);
-
+    PathBuilder builder = PathBuilder(dx);
     char *iter = (char *)node->attribute("points").value();
+
+    float x = ParseFloat(&iter, viewport->uupix); iter++;
+    float y = ParseFloat(&iter, viewport->uupiy); iter++;
+    Vec2 start = Vec2(x, y);
+    builder.Move(start);
+
     while (*iter) {
-       char *end;
-
-       float x = ParseFloat(&iter, viewport->uupix);
-       while (*iter && !IsFloatingPointChar(*iter)) iter++;
-       commands.push_back(x);
-
-       float y = ParseFloat(&iter, viewport->uupiy);
-       while (*iter && !IsFloatingPointChar(*iter)) iter++;
-       commands.push_back(y);
-
-       commands.push_back(kPathCommandLine);
+       float x = ParseFloat(&iter, viewport->uupix); iter++;
+       float y = ParseFloat(&iter, viewport->uupiy); iter++;
+       builder.Line(Vec2(x, y));
     }
 
-    if (commands.size() > 3) {
-        // Close the path
-        float start_x = commands[1];
-        commands.push_back(start_x);
-
-        float start_y = commands[2];
-        commands.push_back(start_y);
-
-        return Path(commands, dx);
-    } else {
-        // Not a valid polygon, just create an empty one
-        return Path(std::vector<float>(), dx);
-    }
+    builder.Close();
+    return builder.Build();
 }
 
 Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
+    PathBuilder builder = PathBuilder(dx);
+
     char *path = (char *) node->attribute("d").value();
-    auto commands = std::vector<float>();
 
     Vec2 pos = Vec2(0.0f, 0.0f);
+    // A 'z' command closes a sub path and an 'm' command opens a new one
     Vec2 sub_path_start = pos;
 
     while (*path) {
@@ -147,32 +116,29 @@ Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx)
 
         switch (*path) {
             case 'M': {
-                ParseCommandLetter(kPathCommandMove, &commands, viewport, &path, 1, &pos, false);
+                ParsePathCmdMove(&builder, viewport, &path, &pos, false);
                 sub_path_start = pos;
                 break;
             }
 
             case 'm': {
-                ParseCommandLetter(kPathCommandMove, &commands, viewport, &path, 1, &pos, true);
+                ParsePathCmdMove(&builder, viewport, &path, &pos, true);
                 sub_path_start = pos;
                 break;
             }
 
             case 'c': {
-                ParseCommandLetter(kPathCommandCubic, &commands, viewport, &path, 3, &pos, true);
+                ParsePathCmdCubic(&builder, viewport, &path, &pos, true);
                 break;
             }
 
             case 'l': {
-                ParseCommandLetter(kPathCommandLine, &commands, viewport, &path, 1, &pos, true);
+                ParsePathCmdLine(&builder, viewport, &path, &pos, true);
                 break;
             }
 
             case 'z': {
-                commands.push_back(kPathCommandLine);
-                commands.push_back(sub_path_start.x);
-                commands.push_back(sub_path_start.y);
-                path++;
+                ParsePathCmdClose(&builder, &path, &pos, sub_path_start);
                 break;
             }
 
@@ -184,7 +150,7 @@ Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx)
 
     }
 
-    return Path(commands, dx);
+    return builder.Build();
 }
 
 Path ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
@@ -194,7 +160,6 @@ Path ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *d
 
     return Path::CreateCircle(Vec2(x, y), r, dx);
 }
-
 
 bool IsFloatingPointChar(char c) {
     return IsDigit(c) ||
@@ -222,48 +187,63 @@ float ParseFloat(char **path, float uupi) {
     return RoundFloatingInput(std::strtof(*path, path)) / uupi;
 }
 
-// One command letter can precede one or more commands. We iterate over the points
-// that follow a command letter and add them to the commands vector until we hit the
-// next command or the end of the path. For example, a line command may look like:
-// "L 100 100 200 200" which would be two line commands. One to (100, 100) and a following
-// one to (200, 200)
-void ParseCommandLetter(float command, std::vector<float> *commands, ViewPort *viewport, char **path, uint8_t n, Vec2 *pos, bool relative) {
-    (*path)++;
-
-    while (**path && !IsAlphabetical(**path)) {
-        commands->push_back(command);
-        EatWhitespace(path);
-        ParseCommandPoints(commands, viewport, path, n, pos, relative);
-        EatWhitespace(path);
-    }
-}
-
-void ParseCommandPoints(std::vector<float> *commands, ViewPort *viewport, char **iter, uint8_t n, Vec2 *pos, bool relative) {
-    Vec2 new_pos = *pos;
-    for (auto i=0; i < n; i++) {
-       Vec2 new_point = ParsePoint(iter, viewport);
-
-       if (relative) {
-           new_point += *pos;
-       }
-
-       commands->push_back(new_point.x);
-       commands->push_back(new_point.y);
-
-       new_pos = new_point;
-    }
-
-    *pos = new_pos;
-}
-
-Vec2 ParsePoint(char **iter, ViewPort *viewport) {
+Vec2 ParsePoint(char **iter, ViewPort *viewport, Vec2 *pos, bool relative) {
     float x = ParseFloat(iter, viewport->uupix);
     (*iter)++;
     float y = ParseFloat(iter, viewport->uupiy);
 
-    return Vec2(x, y);
+    Vec2 point = Vec2(x, y);
+    if (relative) {
+        point += *pos;
+    }
+
+    return point;
 }
 
-void EatWhitespace(char **iter) {
-    while (**iter && IsWhitespace(**iter)) (*iter)++;
+/* ParsePathCmd */
+// All of the path command parse methods assume that "path" variable points to the letter that starts the command.
+// For example the line command may come in as 'l 25,25'. Commands can also be repeated without respecifying the
+// starting indicating letter like so: 'l 10,10 20,20 30,30' which explains the while loop in each parse command
+// that goes until it finds the next indicating letter. The current pos should be updated at the end of each command.
+
+void ParsePathCmdMove(PathBuilder *builder, ViewPort *viewport, char **path, Vec2 *pos, bool relative) {
+    (*path)++;
+
+    while (**path && !IsAlphabetical(**path)) {
+        Vec2 to = ParsePoint(path, viewport, pos, relative);
+        builder->Move(to);
+
+        *pos = to;
+    }
+}
+
+void ParsePathCmdLine(PathBuilder *builder, ViewPort *viewport, char **path, Vec2 *pos, bool relative) {
+    (*path)++;
+
+    while (**path && !IsAlphabetical(**path)) {
+        Vec2 to = ParsePoint(path, viewport, pos, relative);
+        builder->Line(to);
+
+        *pos = to;
+    }
+}
+
+void ParsePathCmdCubic(PathBuilder *builder, ViewPort *viewport, char **path, Vec2 *pos, bool relative) {
+    (*path)++;
+
+    while (**path && !IsAlphabetical(**path)) {
+        Vec2 c1  = ParsePoint(path, viewport, pos, relative);
+        Vec2 c2  = ParsePoint(path, viewport, pos, relative);
+        Vec2 end = ParsePoint(path, viewport, pos, relative);
+        builder->Cubic(c1, c2, end);
+
+        *pos = end;
+    }
+}
+
+void ParsePathCmdClose(PathBuilder *builder, char **path, Vec2 *pos, Vec2 sub_path_start) {
+    (*path)++;
+    builder->Close();
+
+    *pos = sub_path_start;
 }

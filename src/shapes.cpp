@@ -52,85 +52,75 @@ float Text::Y() {
     return this->pos.y;
 }
 
-Path::Path(std::vector<float> commands, DXState *dx) : commands(commands), transform(Transformation()) {
+PathBuilder::PathBuilder(DXState *dx) : has_open_figure(false){
     HRESULT hr;
-    hr = dx->factory->CreatePathGeometry(&this->geometry);
 
-    ID2D1GeometrySink *geometry_sink;
-    hr = this->geometry->Open(&geometry_sink);
+    hr = dx->factory->CreatePathGeometry(&this->geometry);
+    ExitOnFailure(hr);
+
+    hr = this->geometry->Open(&this->geometry_sink);
+    ExitOnFailure(hr);
 
     geometry_sink->SetFillMode(D2D1_FILL_MODE_WINDING);
+}
 
-    Vec2 start = Vec2(0.0f, 0.0f);
-    auto i=0;
-
-    // If the first command is a move, use that as the start. Otherwise (0, 0) will be the start
-    // and will end up counting in geometry->Bounds()
-    if (commands.size() > 2 && commands[0] == kPathCommandMove) {
-        start = Vec2(commands[i+1], commands[i+2]);
-        i += 3;
+void PathBuilder::Move(Vec2 to) {
+    if (this->has_open_figure) {
+        geometry_sink->EndFigure(D2D1_FIGURE_END_OPEN);
     }
 
-    geometry_sink->BeginFigure(start.D2Point(), D2D1_FIGURE_BEGIN_FILLED);
-    while (i < commands.size()) {
-        if (commands[i] == kPathCommandMove) {
-            Vec2 pos = Vec2(commands[i+1], commands[i+2]);
-            i+=3;
+    geometry_sink->BeginFigure(to.D2Point(), D2D1_FIGURE_BEGIN_FILLED);
+    this->has_open_figure = true;
+}
 
-            geometry_sink->EndFigure(D2D1_FIGURE_END_OPEN);
-            geometry_sink->BeginFigure(pos.D2Point(), D2D1_FIGURE_BEGIN_FILLED);
-            continue;
-        }
+void PathBuilder::Line(Vec2 to) {
+   this->geometry_sink->AddLine(to.D2Point());
+}
 
-        if (commands[i] == kPathCommandCubic) {
-            Vec2 c1  = Vec2(commands[i+1], commands[i+2]);
-            Vec2 c2  = Vec2(commands[i+3], commands[i+4]);
-            Vec2 end = Vec2(commands[i+5], commands[i+6]);
-            i += 7;
+void PathBuilder::Cubic(Vec2 c1, Vec2 c2, Vec2 end) {
+    D2D1_BEZIER_SEGMENT bezier = D2D1::BezierSegment(c1.D2Point(), c2.D2Point(), end.D2Point());
+    geometry_sink->AddBezier(bezier);
+}
 
-            D2D1_BEZIER_SEGMENT bezier = D2D1::BezierSegment(c1.D2Point(), c2.D2Point(), end.D2Point());
-            geometry_sink->AddBezier(bezier);
-            continue;
-        }
+void PathBuilder::Arc(Vec2 end, Vec2 size, float rot, D2D1_SWEEP_DIRECTION direction) {
+    D2D1_ARC_SEGMENT arc = D2D1_ARC_SEGMENT {
+        end.D2Point(),
+        size.Size(),
+        rot,
+        direction,
+        D2D1_ARC_SIZE_LARGE,
+    };
+    this->geometry_sink->AddArc(arc);
+}
 
-        if (commands[i] == kPathCommandLine) {
-            Vec2 to = Vec2(commands[i+1], commands[i+2]);
-            i += 3;
+void PathBuilder::Close() {
+    if (this->has_open_figure) {
+        this->geometry_sink->EndFigure(D2D1_FIGURE_END_CLOSED);
+        this->has_open_figure = false;
+    }
+}
 
-            geometry_sink->AddLine(to.D2Point());
-            continue;
-        }
-
-        if (commands[i] == kPathCommandArc) {
-            Vec2 end  = Vec2(commands[i+1], commands[i+2]);
-            Vec2 size = Vec2(commands[i+3], commands[i+4]);
-            float rot = commands[i+5];
-
-            D2D1_SWEEP_DIRECTION direction = commands[i+6] == kClockwise ?
-                D2D1_SWEEP_DIRECTION_CLOCKWISE :
-                D2D1_SWEEP_DIRECTION_COUNTER_CLOCKWISE;
-
-            i += 7;
-
-            geometry_sink->AddArc(D2D1_ARC_SEGMENT {
-                end.D2Point(),
-                size.Size(),
-                rot,
-                direction,
-                D2D1_ARC_SIZE_LARGE,
-            });
-            continue;
-        }
-
-        printf("Unrecognized path command at %d of %.9f :(\n", i, commands[i]);
-        i++;
-        continue;
+Path PathBuilder::Build() {
+    if (this->has_open_figure) {
+        this->geometry_sink->EndFigure(D2D1_FIGURE_END_OPEN);
     }
 
-    geometry_sink->EndFigure(D2D1_FIGURE_END_OPEN);
-    geometry_sink->Close();
-    geometry_sink->Release();
-};
+    this->geometry_sink->Close();
+    this->geometry_sink->Release();
+
+    return Path(this->geometry);
+}
+
+Path::Path(ID2D1PathGeometry *geometry) : geometry(geometry), transform(Transformation()), collection(0) {};
+
+Path Path::CreateLine(Vec2 from, Vec2 to, DXState *dx) {
+    PathBuilder builder = PathBuilder(dx);
+    builder.Move(from);
+    builder.Line(to);
+
+    return builder.Build();
+
+}
 
 Path Path::CreateRect(Vec2 pos, Vec2 size, DXState *dx) {
     float left  = pos.x;
@@ -138,33 +128,36 @@ Path Path::CreateRect(Vec2 pos, Vec2 size, DXState *dx) {
     float top   = pos.y;
     float bot   = pos.y + size.y;
 
-    auto commands = std::vector<float>{
-        kPathCommandMove, left,  top,
-        kPathCommandLine, right, top,
-        kPathCommandLine, right, bot,
-        kPathCommandLine, left,  bot,
-        kPathCommandLine, left,  top,
-    };
+    PathBuilder builder = PathBuilder(dx);
 
-    return Path(commands, dx);
+    builder.Move(Vec2(left,  top));
+    builder.Line(Vec2(right, top));
+    builder.Line(Vec2(right, bot));
+    builder.Line(Vec2(left,  bot));
+
+    builder.Close();
+    return builder.Build();
 }
 
 Path Path::CreateCircle(Vec2 center, float radius, DXState *dx) {
     float startx = center.x - radius;
     float endx   = center.x + radius;
 
+    Vec2 start = Vec2(startx, center.y);
+    Vec2 end   = Vec2(endx,   center.y);
+
+    Vec2 size = Vec2(radius, radius);
+
     // TODO: Right now we create a circle with two arcs
     // This doesn't seem like a great solution but I'm not sure how else
     // to do it so I'm leaving this TODO as a reminder to come back later
-    auto commands = std::vector<float> {
-        kPathCommandMove, startx, center.y,
-        kPathCommandArc, endx, center.y, radius, radius, 0.0f, kClockwise,
-        kPathCommandMove, startx, center.y,
-        kPathCommandArc, endx, center.y, radius, radius, 0.0f, kCounterClockwise,
-    };
+    PathBuilder builder = PathBuilder(dx);
+    builder.Move(start);
+    builder.Arc(end, size, 0.0f, D2D1_SWEEP_DIRECTION_CLOCKWISE);
+    builder.Move(start);
+    builder.Arc(end, size, 0.0f, D2D1_SWEEP_DIRECTION_COUNTER_CLOCKWISE);
 
-    return Path(commands, dx);
-
+    return builder.Build();
 }
 
 D2D1_RECT_F Path::Bound() {

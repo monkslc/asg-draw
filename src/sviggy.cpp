@@ -9,7 +9,6 @@
 #endif
 
 #include <d2d1.h>
-#include <vector>
 #include <windows.h>
 #include <windowsx.h>
 
