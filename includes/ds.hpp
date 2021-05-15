@@ -13,8 +13,8 @@ class DynamicArray {
         this->data = (T*) malloc(sizeof(T) * capacity);
     }
 
-    DynamicArray() {
-        DynamicArray(0);
+    DynamicArray() : length(0), capacity(0) {
+        this->data = (T*) malloc(sizeof(T) * this->capacity);
     }
 
     void IncreaseCapacity(size_t new_capacity) {
@@ -34,6 +34,7 @@ class DynamicArray {
             this->IncreaseCapacity((this->capacity * 2) + 1); // Add +1 here incase capacity is 0
         }
 
+        this->data[this->length] = elem;
         *(this->data + this->length) = elem;
         this->length++;
     }
@@ -93,6 +94,10 @@ class String {
 
         this->chars.Put(NULL, this->chars.length);
         return this->chars.data;
+    }
+
+    void Free() {
+        this->chars.Free();
     }
 };
 

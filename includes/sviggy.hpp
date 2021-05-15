@@ -81,6 +81,7 @@ class Path {
     Path(ID2D1PathGeometry *geometry);
 
     void Free() {
+        this->tags.Free();
         this->geometry->Release();
     }
 
@@ -148,6 +149,12 @@ class Document {
     View view;
     size_t next_collection = 0;
     Document();
+
+    void Free() {
+        this->texts.Free();
+        this->paths.Free();
+        this->active_shapes.Free();
+    }
 
     void AddNewPath(Path p);
     size_t NextCollection();

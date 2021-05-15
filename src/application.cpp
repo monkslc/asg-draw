@@ -121,6 +121,10 @@ std::unordered_map<size_t, DynamicArray<size_t>> Document::Collections() {
         collections[path->collection].Push(i);
     }
 
+    for (auto &[k, v] : collections) {
+        v.Free();
+    }
+
     return collections;
 }
 
