@@ -45,6 +45,11 @@ Text::Text(Vec2 pos, String text, DXState* dx) : pos(pos), text(text), transform
 
 };
 
+void Text::Free() {
+    this->layout->Release();
+    this->format->Release();
+}
+
 float Text::X() {
     return this->pos.x;
 }
@@ -113,6 +118,11 @@ Path PathBuilder::Build() {
 }
 
 Path::Path(ID2D1PathGeometry *geometry) : geometry(geometry), transform(Transformation()), collection(0), tags(DynamicArray<String>(1)) {};
+
+void Path::Free() {
+    this->tags.FreeAll();
+    this->geometry->Release();
+}
 
 Path Path::CreateLine(Vec2 from, Vec2 to, DXState *dx) {
     PathBuilder builder = PathBuilder(dx);

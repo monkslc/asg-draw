@@ -67,8 +67,18 @@ class DynamicArray {
         this->length = 0;
     }
 
+
     void Free() {
         free(this->data);
+    }
+
+    void FreeAll() {
+        for (auto i=0; i<this->length; i++) {
+           T* elem = this->GetPtr(i);
+           elem->Free();
+        }
+
+        this->Free();
     }
 };
 

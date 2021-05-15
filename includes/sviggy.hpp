@@ -60,6 +60,8 @@ class Text {
     Transformation transform;
     Text(Vec2 pos, String text, DXState *dx);
 
+    void Free();
+
     float X();
     float Y();
 };
@@ -80,10 +82,7 @@ class Path {
     DynamicArray<String> tags;
     Path(ID2D1PathGeometry *geometry);
 
-    void Free() {
-        this->tags.Free();
-        this->geometry->Release();
-    }
+    void Free();
 
     static Path CreateLine(Vec2 from, Vec2 to, DXState *dx);
     static Path CreateRect(Vec2 pos, Vec2 size, DXState *dx);
@@ -150,11 +149,7 @@ class Document {
     size_t next_collection = 0;
     Document();
 
-    void Free() {
-        this->texts.Free();
-        this->paths.Free();
-        this->active_shapes.Free();
-    }
+    void Free();
 
     void AddNewPath(Path p);
     size_t NextCollection();
@@ -174,6 +169,8 @@ class Application {
     DynamicArray<Document> documents;
     size_t active_doc;
     Application();
+
+    void Free();
 
     Document* ActiveDoc();
     View* ActiveView();

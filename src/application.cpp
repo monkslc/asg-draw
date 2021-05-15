@@ -7,6 +7,10 @@ Application::Application() : documents(DynamicArray<Document>(1)), active_doc(0)
     this->documents.Push(Document());
 };
 
+void Application::Free() {
+    this->documents.FreeAll();
+}
+
 Document* Application::ActiveDoc() {
     return this->documents.GetPtr(this->active_doc);
 }
@@ -28,6 +32,12 @@ void Application::ActivateDoc(size_t index) {
 }
 
 Document::Document() : texts(DynamicArray<Text>(10)), paths(DynamicArray<Path>(10)), active_shapes(DynamicArray<ActiveShape>(5)) {};
+
+void Document::Free() {
+    this->texts.FreeAll();
+    this->paths.FreeAll();
+    this->active_shapes.Free();
+}
 
 void Document::AddNewPath(Path p) {
     p.collection = this->NextCollection();
