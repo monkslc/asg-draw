@@ -1,5 +1,6 @@
 #include <d2d1.h>
 
+#include "ds.hpp"
 #include "shapes.hpp"
 #include "sviggy.hpp"
 
@@ -15,7 +16,7 @@ D2D1::Matrix3x2F Transformation::Matrix(Vec2 center) {
     return rotation * scale * translation;
 };
 
-Text::Text(Vec2 pos, std::string text, DXState* dx) : pos(pos), text(text), transform(Transformation()) {
+Text::Text(Vec2 pos, String text, DXState* dx) : pos(pos), text(text), transform(Transformation()) {
     HRESULT hr;
 
     hr = dx->write_factory->CreateTextFormat(
@@ -32,7 +33,7 @@ Text::Text(Vec2 pos, std::string text, DXState* dx) : pos(pos), text(text), tran
     this->format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
     this->format->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
 
-    std::wstring wide_string = std::wstring(text.begin(), text.end());
+    std::wstring wide_string = std::wstring(text.chars.data, text.chars.End());
     dx->write_factory->CreateTextLayout(
         wide_string.c_str(),
         wide_string.size(),
@@ -111,7 +112,7 @@ Path PathBuilder::Build() {
     return Path(this->geometry);
 }
 
-Path::Path(ID2D1PathGeometry *geometry) : geometry(geometry), transform(Transformation()), collection(0) {};
+Path::Path(ID2D1PathGeometry *geometry) : geometry(geometry), transform(Transformation()), collection(0), tags(DynamicArray<std::string>(1)) {};
 
 Path Path::CreateLine(Vec2 from, Vec2 to, DXState *dx) {
     PathBuilder builder = PathBuilder(dx);

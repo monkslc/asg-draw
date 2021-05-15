@@ -3,21 +3,23 @@
 
 #include "sviggy.hpp"
 
-Application::Application() : documents(std::vector<Document> {Document()}), active_doc(0) {};
+Application::Application() : documents(DynamicArray<Document>(1)), active_doc(0) {
+    this->documents.Push(Document());
+};
 
 Document* Application::ActiveDoc() {
-    return &this->documents[this->active_doc];
+    return this->documents.GetPtr(this->active_doc);
 }
 
 View* Application::ActiveView() {
-    return &this->documents[this->active_doc].view;
+    return &this->documents.GetPtr(this->active_doc)->view;
 }
 
 void Application::ActivateDoc(size_t index) {
-    if (this->documents.size() <= index) {
-        auto i = documents.size();
+    if (this->documents.length <= index) {
+        auto i = documents.length;
         while (i <= index) {
-            this->documents.push_back(Document());
+            this->documents.Push(Document());
             i++;
         }
     }
@@ -25,11 +27,11 @@ void Application::ActivateDoc(size_t index) {
     this->active_doc = index;
 }
 
-Document::Document() {};
+Document::Document() : texts(DynamicArray<Text>(10)), paths(DynamicArray<Path>(10)), active_shapes(DynamicArray<ActiveShape>(5)) {};
 
 void Document::AddNewPath(Path p) {
     p.collection = this->NextCollection();
-    this->paths.push_back(p);
+    this->paths.Push(p);
 }
 
 size_t Document::NextCollection() {
@@ -47,7 +49,7 @@ bool EntirelyContains(D2D1_RECT_F* outer, D2D1_RECT_F* inner) {
 }
 
 void Document::SelectShapes(Vec2 mousedown, Vec2 mouseup) {
-    auto new_selection = std::vector<ActiveShape>();
+    this->active_shapes.Clear();
 
     float minx = std::min<float>(mousedown.x, mouseup.x);
     float miny = std::min<float>(mousedown.y, mouseup.y);
@@ -58,36 +60,35 @@ void Document::SelectShapes(Vec2 mousedown, Vec2 mouseup) {
     Vec2 end   = Vec2(maxx, maxy);
 
     D2D1_RECT_F selection = D2D1::RectF(start.x, start.y, end.x, end.y);
-    for (auto i=0; i<this->paths.size(); i++) {
-       Path *path = &this->paths[i];
+    for (auto i=0; i<this->paths.length; i++) {
+       Path *path = this->paths.GetPtr(i);
        D2D1_RECT_F bound = path->Bound();
 
        if (EntirelyContains(&selection, &bound)) {
-           new_selection.emplace_back(ShapeType::Path, i);
+           this->active_shapes.Push(ActiveShape(ShapeType::Path, i));
        }
     }
 
-    this->active_shapes = new_selection;
 }
 
 void Document::SelectShape(Vec2 screen_pos) {
+    this->active_shapes.Clear();
+
     D2D1_POINT_2F point = screen_pos.D2Point();
 
     D2D1::Matrix3x2F doc_to_screen = this->view.DocumentToScreenMat();
 
-    for (auto i=0; i<this->paths.size(); i++) {
-        Path *path = &this->paths[i];
+    for (auto i=0; i<this->paths.length; i++) {
+        Path *path = this->paths.GetPtr(i);
 
         BOOL contains_point;
         path->geometry->StrokeContainsPoint(point, kHairline, NULL, path->TransformMatrix() * doc_to_screen, &contains_point);
 
         if (contains_point) {
-            this->active_shapes = std::vector<ActiveShape>{ActiveShape(ShapeType::Path, i)};
+            this->active_shapes.Push(ActiveShape(ShapeType::Path, i));
             return;
         }
     }
-
-    this->active_shapes = std::vector<ActiveShape>();
 }
 
 void Document::TranslateView(Vec2 amount) {
@@ -112,12 +113,12 @@ void Document::RunPipeline() {
     printf("\n\n\n");
 }
 
-std::unordered_map<size_t, std::vector<size_t>> Document::Collections() {
-    auto collections = std::unordered_map<size_t, std::vector<size_t>>();
+std::unordered_map<size_t, DynamicArray<size_t>> Document::Collections() {
+    auto collections = std::unordered_map<size_t, DynamicArray<size_t>>();
 
-    for (auto i=0; i<this->paths.size(); i++) {
-        Path *path = &this->paths[i];
-        collections[path->collection].push_back(i);
+    for (auto i=0; i<this->paths.length; i++) {
+        Path *path = this->paths.GetPtr(i);
+        collections[path->collection].Push(i);
     }
 
     return collections;

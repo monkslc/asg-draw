@@ -3,6 +3,7 @@
 
 #include "pugixml.hpp"
 
+#include "ds.hpp"
 #include "sviggy.hpp"
 #include "utils.hpp"
 

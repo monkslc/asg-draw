@@ -6,10 +6,11 @@
 #include <dwrite.h>
 #include <d2d1.h>
 #include <string>
-#include <vector>
 #include <unordered_map>
 
 #include <system_error>
+
+#include "ds.hpp"
 
 #define RETURN_FAIL(hr) if(FAILED(hr)) return hr
 // Subtract 1 from array size to avoid the null terminating character for b
@@ -53,11 +54,11 @@ class Transformation {
 class Text {
     public:
     Vec2 pos;
-    std::string text;
+    String text;
     IDWriteTextLayout *layout;
     IDWriteTextFormat *format;
     Transformation transform;
-    Text(Vec2 pos, std::string text, DXState *dx);
+    Text(Vec2 pos, String text, DXState *dx);
 
     float X();
     float Y();
@@ -76,7 +77,7 @@ class Path {
     Transformation transform;
     ID2D1PathGeometry *geometry;
     size_t collection;
-    std::vector<std::string> tags;
+    DynamicArray<std::string> tags;
     Path(ID2D1PathGeometry *geometry);
 
     void Free() {
@@ -141,9 +142,9 @@ class View {
 
 class Document {
     public:
-    std::vector<Text> texts;
-    std::vector<Path> paths;
-    std::vector<ActiveShape> active_shapes;
+    DynamicArray<Text> texts;
+    DynamicArray<Path> paths;
+    DynamicArray<ActiveShape> active_shapes;
     View view;
     size_t next_collection = 0;
     Document();
@@ -158,12 +159,12 @@ class Document {
 
     // Pipeline methods
     void RunPipeline();
-    std::unordered_map<size_t, std::vector<size_t>> Collections();
+    std::unordered_map<size_t, DynamicArray<size_t>> Collections();
 };
 
 class Application {
     public:
-    std::vector<Document> documents;
+    DynamicArray<Document> documents;
     size_t active_doc;
     Application();
 

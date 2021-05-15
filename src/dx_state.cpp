@@ -308,8 +308,10 @@ HRESULT DXState::Render(Document *doc, UIState *ui) {
 HRESULT DXState::RenderPaths(Document *doc) {
     HRESULT hr = S_OK;
 
-    for (auto &path : doc->paths) {
-        hr = RenderShape(this, &path);
+    for (auto i=0; i<doc->paths.length; i++) {
+        Path *path = doc->paths.GetPtr(i);
+
+        hr = RenderShape(this, path);
         RETURN_FAIL(hr);
     }
 
@@ -317,10 +319,12 @@ HRESULT DXState::RenderPaths(Document *doc) {
 }
 
 void DXState::RenderText(Document *doc) {
-    for (auto &text : doc->texts) {
+    for (auto i=0; i<doc->texts.length; i++) {
+        Text* text = doc->texts.GetPtr(i);
+
         // So we could set the transform here but then we lose the original one
         // Maybe we create a new one, badda bing batta boom it then do our thing
-        this->renderTarget->DrawTextLayout(text.pos.D2Point(), text.layout, this->blackBrush, D2D1_DRAW_TEXT_OPTIONS_NONE);
+        this->renderTarget->DrawTextLayout(text->pos.D2Point(), text->layout, this->blackBrush, D2D1_DRAW_TEXT_OPTIONS_NONE);
     }
 }
 
@@ -413,7 +417,7 @@ void DXState::RenderCommandPrompt(UIState *ui, Document *doc) {
 
             Vec2 pos = ParseVec(&iter);
 
-            doc->paths.push_back(Path::CreateRect(pos, size, this));
+            doc->paths.Push(Path::CreateRect(pos, size, this));
 
             CommandPromptReset(ui);
             goto CmdPromptEnd;
@@ -448,26 +452,28 @@ void DXState::RenderCommandPrompt(UIState *ui, Document *doc) {
 char tag_buf[256] = {0};
 
 void DXState::RenderActiveSelectionWindow(Document *doc) {
-    if (doc->active_shapes.size() == 0) return;
+    if (doc->active_shapes.length == 0) return;
 
     ImGui::Begin("Active Selection");
 
-    for (auto &shape : doc->active_shapes) {
-        int id = shape.index;
-        if (ImGui::TreeNode(&shape, "Shape %d\n", id)) {
+    for (auto i=0; i<doc->active_shapes.length; i++) {
+        ActiveShape *shape = doc->active_shapes.GetPtr(i);
+
+        int id = shape->index;
+        if (ImGui::TreeNode(shape, "Shape %d\n", id)) {
             Transformation* transform;
             D2D1_RECT_F bound;
             size_t *collection;
             const char *shape_type;
-            std::vector<std::string> *tags;
+            DynamicArray<std::string> *tags;
 
-            switch (shape.type) {
+            switch (shape->type) {
                 case ShapeType::Path: {
-                    transform = &doc->paths[id].transform;
-                    bound = doc->paths[id].Bound();
+                    transform = &doc->paths.GetPtr(id)->transform;
+                    bound = doc->paths.Get(id).Bound();
                     shape_type = "Path";
-                    collection = &doc->paths[id].collection;
-                    tags = &doc->paths[id].tags;
+                    collection = &doc->paths.GetPtr(id)->collection;
+                    tags = &doc->paths.GetPtr(id)->tags;
                     break;
                 }
 
@@ -495,13 +501,13 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f);
 
             ImGui::Text("Tags:");
-            for (auto i=0; i<tags->size(); i++) {
-                std::string *tag = &(*tags)[i];
+            for (auto i=0; i<tags->length; i++) {
+                std::string *tag = tags->GetPtr(i);
                 ImGui::Text("%s", tag->c_str());
             }
 
             if (ImGui::InputText("Add Tag", tag_buf, ARRAYSIZE(tag_buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
-                tags->push_back(std::string(tag_buf));
+                tags->Push(std::string(tag_buf));
                 ClearBuf(tag_buf);
             }
 
@@ -511,8 +517,10 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
 
     if(ImGui::Button("Collect")) {
         size_t collection = doc->NextCollection();
-        for (ActiveShape &shape_ref : doc->active_shapes) {
-            Path *path = &doc->paths[shape_ref.index];
+        for (auto i=0; i<doc->active_shapes.length; i++) {
+            ActiveShape *shape = doc->active_shapes.GetPtr(i);
+
+            Path *path = doc->paths.GetPtr(shape->index);
             path->collection = collection;
         }
     }

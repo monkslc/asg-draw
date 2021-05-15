@@ -4,6 +4,8 @@
 #include "sviggy.hpp"
 #include "utils.hpp"
 
+#include "ds.hpp"
+
 #define TAGCMP(node, type) strcmp(node->name(), type) == 0
 
 void LoadSVGFile(char *file, Document *doc, DXState *dx) {
@@ -32,7 +34,8 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
         }
 
         if (TAGCMP(node, "text")) {
-            doc->texts.push_back(ParseTagText(node, viewport, dx));
+            Text text = ParseTagText(node, viewport, dx);
+            doc->texts.Push(text);
             continue;
         }
 
@@ -71,7 +74,7 @@ Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx)
     float x = RoundFloatingInput(node->attribute("x").as_float() / viewport->uupix);
     float y = RoundFloatingInput(node->attribute("y").as_float() / viewport->uupiy);
 
-    return Text(Vec2(x, y), std::string(node->text().get()), dx);
+    return Text(Vec2(x, y), String((char *)node->text().get()), dx);
 }
 
 Path ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
