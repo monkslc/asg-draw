@@ -82,6 +82,18 @@ class String {
             iter++;
         }
     };
+
+    // CStr places a null pointer past the end of the array but doesn't increase the size of the
+    // underlying array. So if an element is pushed to the array after getting a pointer to the c
+    // string, it will overwrite the null pointer
+    char* CStr() {
+        if (this->chars.length >= this->chars.capacity) {
+            this->chars.IncreaseCapacity(this->chars.capacity + 1);
+        }
+
+        this->chars.Put(NULL, this->chars.length);
+        return this->chars.data;
+    }
 };
 
 #endif

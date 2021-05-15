@@ -112,7 +112,7 @@ Path PathBuilder::Build() {
     return Path(this->geometry);
 }
 
-Path::Path(ID2D1PathGeometry *geometry) : geometry(geometry), transform(Transformation()), collection(0), tags(DynamicArray<std::string>(1)) {};
+Path::Path(ID2D1PathGeometry *geometry) : geometry(geometry), transform(Transformation()), collection(0), tags(DynamicArray<String>(1)) {};
 
 Path Path::CreateLine(Vec2 from, Vec2 to, DXState *dx) {
     PathBuilder builder = PathBuilder(dx);

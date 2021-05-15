@@ -77,7 +77,7 @@ class Path {
     Transformation transform;
     ID2D1PathGeometry *geometry;
     size_t collection;
-    DynamicArray<std::string> tags;
+    DynamicArray<String> tags;
     Path(ID2D1PathGeometry *geometry);
 
     void Free() {

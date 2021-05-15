@@ -465,7 +465,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             D2D1_RECT_F bound;
             size_t *collection;
             const char *shape_type;
-            DynamicArray<std::string> *tags;
+            DynamicArray<String> *tags;
 
             switch (shape->type) {
                 case ShapeType::Path: {
@@ -502,12 +502,12 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
 
             ImGui::Text("Tags:");
             for (auto i=0; i<tags->length; i++) {
-                std::string *tag = tags->GetPtr(i);
-                ImGui::Text("%s", tag->c_str());
+                String *tag = tags->GetPtr(i);
+                ImGui::Text("%s", tag->CStr());
             }
 
             if (ImGui::InputText("Add Tag", tag_buf, ARRAYSIZE(tag_buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
-                tags->Push(std::string(tag_buf));
+                tags->Push(String(tag_buf));
                 ClearBuf(tag_buf);
             }
 
