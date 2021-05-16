@@ -111,7 +111,6 @@ HRESULT DXState::CreateDeviceResources(HWND hwnd) {
     );
     RETURN_FAIL(hr);
 
-    // ImGui Device configuration stuff
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(this->device, this->device_context);
 
@@ -322,8 +321,6 @@ void DXState::RenderText(Document *doc) {
     for (auto i=0; i<doc->texts.length; i++) {
         Text* text = doc->texts.GetPtr(i);
 
-        // So we could set the transform here but then we lose the original one
-        // Maybe we create a new one, badda bing batta boom it then do our thing
         this->renderTarget->DrawTextLayout(text->pos.D2Point(), text->layout, this->blackBrush, D2D1_DRAW_TEXT_OPTIONS_NONE);
     }
 }
