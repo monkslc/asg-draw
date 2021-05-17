@@ -15,6 +15,14 @@ void LoadSVGFile(char *file, Document *doc, DXState *dx) {
     pugi::xml_node svg_tree = xml.child("svg");
     ViewPort viewport = ViewPort(&svg_tree);
 
+    // TODO: make sure that this node actually exists
+    pugi::xml_node styles = svg_tree.child("defs").child("style");
+    printf("Styles: \n");
+    for (pugi::xml_node_iterator node : styles) {
+        // TODO: parse these styles so we can apply it to the shapes on the way down
+        printf("%s\n", node->value());
+    }
+
     pugi::xml_object_range<pugi::xml_node_iterator> nodes = svg_tree.children();
     AddNodesToDocument(&viewport, nodes, doc, dx);
 }
