@@ -2,7 +2,6 @@
 
 #include "svg.hpp"
 #include "sviggy.hpp"
-#include "utils.hpp"
 
 #include "ds.hpp"
 
@@ -257,4 +256,44 @@ void ParsePathCmdClose(PathBuilder *builder, char **path, Vec2 *pos, Vec2 sub_pa
     builder->Close();
 
     *pos = sub_path_start;
+}
+
+// The svg input files usually have values that are slightly different than what was intended
+// when creating them due to floating point errors. We currently round the input shapes to the
+// nearest thousandth to correct this.
+float RoundFloatingInput(float x) {
+   return roundf(x * 1000) / 1000;
+}
+
+char* FindChar(char *str, char ch) {
+    while (*str && *str != ch )
+        str++;
+
+    return str;
+}
+
+char* SkipChar(char *str, char ch) {
+    str = FindChar(str, ch);
+    str++;
+
+    return str;
+}
+
+ViewPort::ViewPort(pugi::xml_node *node) {
+    // Assumes the width and height are specified in inches
+    float width_inches  = std::stof(node->attribute("width").value());
+    float height_inches = std::stof(node->attribute("height").value());
+
+    // Viewbox comes in in the format "x y width height"
+    char *view_box = (char *)node->attribute("viewBox").value();
+
+    view_box = SkipChar(view_box, ' ');
+    view_box = SkipChar(view_box, ' ');
+    float width_user_units = std::stof(view_box);
+
+    view_box = SkipChar(view_box, ' ');
+    float height_user_units = std::stof(view_box);
+
+    this->uupix = width_user_units / width_inches;
+    this->uupiy = height_user_units / height_inches;
 }

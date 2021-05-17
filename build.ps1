@@ -1,7 +1,6 @@
 clang --debug -I ./includes -I external -o sviggy.exe `
     src/sviggy.cpp `
     src/svg.cpp `
-    src/utils.cpp `
     src/dx_state.cpp `
     src/shapes.cpp `
     src/vec.cpp `
