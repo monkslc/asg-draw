@@ -24,6 +24,8 @@ DXState dxstate;
 Application app;
 UIState ui;
 
+SysAllocator global_allocator = SysAllocator();
+
 #define FLAGCMP(num, flag) num & flag
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {

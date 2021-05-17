@@ -161,7 +161,7 @@ class Document {
 
     // Pipeline methods
     void RunPipeline();
-    std::unordered_map<size_t, DynamicArray<size_t>> Collections();
+    HashMapEx<size_t, DynamicArrayEx<size_t, LinearAllocatorPool>, LinearAllocatorPool> Collections(LinearAllocatorPool *allocator);
 };
 
 class Application {

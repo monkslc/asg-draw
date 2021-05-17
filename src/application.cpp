@@ -1,6 +1,7 @@
 #include <d2d1.h>
 #include <unordered_map>
 
+#include "ds.hpp"
 #include "sviggy.hpp"
 
 Application::Application() : documents(DynamicArray<Document>(1)), active_doc(0) {
@@ -20,8 +21,8 @@ View* Application::ActiveView() {
 }
 
 void Application::ActivateDoc(size_t index) {
-    if (this->documents.length <= index) {
-        auto i = documents.length;
+    if (this->documents.Length() <= index) {
+        auto i = documents.Length();
         while (i <= index) {
             this->documents.Push(Document());
             i++;
@@ -70,7 +71,7 @@ void Document::SelectShapes(Vec2 mousedown, Vec2 mouseup) {
     Vec2 end   = Vec2(maxx, maxy);
 
     D2D1_RECT_F selection = D2D1::RectF(start.x, start.y, end.x, end.y);
-    for (auto i=0; i<this->paths.length; i++) {
+    for (auto i=0; i<this->paths.Length(); i++) {
        Path *path = this->paths.GetPtr(i);
        D2D1_RECT_F bound = path->Bound();
 
@@ -88,7 +89,7 @@ void Document::SelectShape(Vec2 screen_pos) {
 
     D2D1::Matrix3x2F doc_to_screen = this->view.DocumentToScreenMat();
 
-    for (auto i=0; i<this->paths.length; i++) {
+    for (auto i=0; i<this->paths.Length(); i++) {
         Path *path = this->paths.GetPtr(i);
 
         BOOL contains_point;
@@ -114,25 +115,39 @@ Vec2 Document::MousePos() {
 }
 
 void Document::RunPipeline() {
-    auto collections = this->Collections();
+    size_t memory_estimation = this->paths.Length() * 100;
+    LinearAllocatorPool allocator = LinearAllocatorPool(memory_estimation);
+    auto collections = this->Collections(&allocator);
 
-    for (auto &[k, v] : collections) {
-        printf("Collection %d had %d shapes\n", k, v.size());
+    for (auto i=0; i<collections.Capacity(); i++) {
+        auto slot = collections.Slot(i);
+        for (auto j=0; j<slot->Length(); j++) {
+            auto* entry = slot->GetPtr(j);
+            //printf("Collection: %d has %d shapes\n", entry->key, entry->value.Length());
+        }
     }
 
-    printf("\n\n\n");
+    allocator.FreeAllocator();
+
+    printf("Ran Pipeline :)\n\n\n");
 }
 
-std::unordered_map<size_t, DynamicArray<size_t>> Document::Collections() {
-    auto collections = std::unordered_map<size_t, DynamicArray<size_t>>();
+// TODO: I don't LOOOOOVE the idea of using a hashmap here. The collection ids are just numbers so we might get away
+// with just using an array. On the other hand the collection id can go way above the number of paths in a document
+// so that might be a little too large. Anyway come back and think about this more later
+HashMapEx<size_t, DynamicArrayEx<size_t, LinearAllocatorPool>, LinearAllocatorPool> Document::Collections(LinearAllocatorPool *allocator) {
+    size_t map_capacity_estimation = this->paths.Length() / 2;
+    auto collections = HashMapEx<size_t, DynamicArrayEx<size_t, LinearAllocatorPool>, LinearAllocatorPool>(map_capacity_estimation, allocator);
 
-    for (auto i=0; i<this->paths.length; i++) {
+    for (auto i=0; i<this->paths.Length(); i++) {
         Path *path = this->paths.GetPtr(i);
-        collections[path->collection].Push(i);
-    }
 
-    for (auto &[k, v] : collections) {
-        v.Free();
+        DynamicArrayEx<size_t, LinearAllocatorPool>* collection = collections.GetPtr(path->collection);
+        if (!collection) {
+           collection = collections.Set(path->collection, DynamicArrayEx<size_t, LinearAllocatorPool>(5, allocator), allocator);
+        }
+
+        collection->Push(i, allocator);
     }
 
     return collections;

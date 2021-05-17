@@ -307,7 +307,7 @@ HRESULT DXState::Render(Document *doc, UIState *ui) {
 HRESULT DXState::RenderPaths(Document *doc) {
     HRESULT hr = S_OK;
 
-    for (auto i=0; i<doc->paths.length; i++) {
+    for (auto i=0; i<doc->paths.Length(); i++) {
         Path *path = doc->paths.GetPtr(i);
 
         hr = RenderShape(this, path);
@@ -318,7 +318,7 @@ HRESULT DXState::RenderPaths(Document *doc) {
 }
 
 void DXState::RenderText(Document *doc) {
-    for (auto i=0; i<doc->texts.length; i++) {
+    for (auto i=0; i<doc->texts.Length(); i++) {
         Text* text = doc->texts.GetPtr(i);
 
         this->renderTarget->DrawTextLayout(text->pos.D2Point(), text->layout, this->blackBrush, D2D1_DRAW_TEXT_OPTIONS_NONE);
@@ -449,11 +449,11 @@ void DXState::RenderCommandPrompt(UIState *ui, Document *doc) {
 char tag_buf[256] = {0};
 
 void DXState::RenderActiveSelectionWindow(Document *doc) {
-    if (doc->active_shapes.length == 0) return;
+    if (doc->active_shapes.Length() == 0) return;
 
     ImGui::Begin("Active Selection");
 
-    for (auto i=0; i<doc->active_shapes.length; i++) {
+    for (auto i=0; i<doc->active_shapes.Length(); i++) {
         ActiveShape *shape = doc->active_shapes.GetPtr(i);
 
         int id = shape->index;
@@ -498,7 +498,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f);
 
             ImGui::Text("Tags:");
-            for (auto i=0; i<tags->length; i++) {
+            for (auto i=0; i<tags->Length(); i++) {
                 String *tag = tags->GetPtr(i);
                 ImGui::Text("%s", tag->CStr());
             }
@@ -514,7 +514,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
 
     if(ImGui::Button("Collect")) {
         size_t collection = doc->NextCollection();
-        for (auto i=0; i<doc->active_shapes.length; i++) {
+        for (auto i=0; i<doc->active_shapes.Length(); i++) {
             ActiveShape *shape = doc->active_shapes.GetPtr(i);
 
             Path *path = doc->paths.GetPtr(shape->index);
