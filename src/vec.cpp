@@ -13,6 +13,11 @@ D2D1_SIZE_F Vec2::Size() {
     return D2D1::SizeF(this->x, this->y);
 }
 
+bool Vec2::Fits(Vec2 other) {
+    // TODO: better floating point comaprison
+    return this->x <= other.x && this->y <= other.y;
+}
+
 Vec2 Vec2::operator+(Vec2 &b) {
     return Vec2(this->x + b.x, this->y + b.y);
 }
@@ -46,3 +51,7 @@ Vec2 Vec2::operator/(float b) {
 Vec2 Vec2::operator-() {
     return Vec2(-this->x, -this->y);
 }
+
+Vec2Many::Vec2Many(Vec2 vec2, float quantity) : vec2(vec2), quantity(quantity) {};
+
+Vec2Named::Vec2Named(Vec2 vec2, size_t id) : vec2(vec2), id(id) {};

@@ -32,6 +32,8 @@ class Vec2 {
 
     D2D1_POINT_2F D2Point();
     D2D1_SIZE_F Size();
+    bool Fits(Vec2 other);
+
     Vec2 operator+(Vec2 &b);
     Vec2 operator+(Vec2 b);
     Vec2& operator+=(Vec2 &b);
@@ -40,6 +42,20 @@ class Vec2 {
 
     Vec2 operator-();
     Vec2 operator/(float b);
+};
+
+class Vec2Many {
+    public:
+    Vec2 vec2;
+    float quantity; // float is a quantity so we can represent infinity
+    Vec2Many(Vec2 vec2, float quantity);
+};
+
+class Vec2Named {
+    public:
+    Vec2 vec2;
+    size_t id;
+    Vec2Named(Vec2 vec2, size_t id);
 };
 
 class Transformation {
