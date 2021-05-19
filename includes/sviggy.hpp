@@ -201,8 +201,6 @@ class Document {
     void ScrollZoom(bool in);
     Vec2 MousePos();
 
-    // Pipeline methods
-    void RunPipeline(Document *doc);
     CollectionMap Collections(LinearAllocatorPool *allocator);
 };
 

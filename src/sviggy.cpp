@@ -17,6 +17,7 @@
 #include "imgui_impl_win32.h"
 #include "pugixml.hpp"
 
+#include "pipeline.hpp"
 #include "svg.hpp"
 #include "sviggy.hpp"
 
@@ -238,7 +239,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         if (app.documents.Length() < 2) {
                             app.documents.Push(Document());
                         }
-                        app.ActiveDoc()->RunPipeline(app.documents.LastPtr());
+                        RunPipeline(app.ActiveDoc(), app.documents.GetPtr(1));
                         break;
 
                     default:
