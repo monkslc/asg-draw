@@ -16,6 +16,9 @@
 // Subtract 1 from array size to avoid the null terminating character for b
 #define STRNCMP(a, b) strncmp(a, b, ARRAYSIZE(b) - 1) == 0
 
+constexpr float kInfinity = std::numeric_limits<float>::infinity();
+constexpr float kNegInfinity = -kInfinity;
+
 constexpr float kPixelsPerInch = 50;
 constexpr float kScaleDelta = 0.1;
 constexpr float kTranslationDelta = 1;
@@ -35,7 +38,6 @@ class Vec2 {
     bool Fits(Vec2 other);
 
     Vec2 operator+(Vec2 &b);
-    Vec2 operator+(Vec2 b);
     Vec2& operator+=(Vec2 &b);
     Vec2 operator-(Vec2 &b);
     Vec2& operator-=(Vec2 &b);
@@ -56,6 +58,24 @@ class Vec2Named {
     Vec2 vec2;
     size_t id;
     Vec2Named(Vec2 vec2, size_t id);
+};
+
+class Rect {
+    public:
+    Vec2 pos, size;
+    Rect(Vec2 pos, Vec2 size);
+
+    float Left();
+    float Top();
+    float Right();
+    float Bottom();
+};
+
+class RectNamed {
+    public:
+    Rect rect;
+    size_t id;
+    RectNamed(Rect rect, size_t id);
 };
 
 class Transformation {
@@ -109,6 +129,8 @@ class Path {
     Vec2 Center();
     Vec2 OriginalCenter();
     D2D1::Matrix3x2F TransformMatrix();
+
+    void SetPos(Vec2 to);
 };
 
 class PathBuilder {
@@ -156,6 +178,10 @@ class View {
     D2D1::Matrix3x2F ScreenToDocumentMat();
 };
 
+// Forward declarion for the Document
+class Application;
+
+typedef HashMapEx<size_t, DynamicArrayEx<size_t, LinearAllocatorPool>, LinearAllocatorPool> CollectionMap;
 class Document {
     public:
     DynamicArray<Text> texts;
@@ -176,8 +202,8 @@ class Document {
     Vec2 MousePos();
 
     // Pipeline methods
-    void RunPipeline();
-    HashMapEx<size_t, DynamicArrayEx<size_t, LinearAllocatorPool>, LinearAllocatorPool> Collections(LinearAllocatorPool *allocator);
+    void RunPipeline(Document *doc);
+    CollectionMap Collections(LinearAllocatorPool *allocator);
 };
 
 class Application {
@@ -249,5 +275,6 @@ void CreateDebugConsole();
 void CreateGuiContext();
 void TeardownGui();
 void ExitOnFailure(HRESULT hr);
+void Union(D2D1_RECT_F *a, D2D1_RECT_F *b);
 
 #endif

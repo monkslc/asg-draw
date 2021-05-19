@@ -4,13 +4,6 @@
 #include "ds.hpp"
 #include "sviggy.hpp"
 
-// LeftX, RightX, etc methods, maybe throw a rotation on it
-class Rect {
-    public:
-    Vec2 pos, size;
-    Rect(Vec2 pos, Vec2 size);
-};
-
 class Bin {
     public:
     Vec2 size;
@@ -20,12 +13,17 @@ class Bin {
 
 DynamicArrayEx<Bin, LinearAllocatorPool> PackBins(
         DynamicArrayEx<Vec2Many, LinearAllocatorPool>* available_bins,
-        DynamicArrayEx<Vec2Named, LinearAllocatorPool> *rects,
+        DynamicArrayEx<RectNamed, LinearAllocatorPool> *rects,
         LinearAllocatorPool *allocator
 );
 
-// Returns Null if none of the available areas work
-Rect* FindNextAvailableArea(
+struct AvailableArea {
+    Rect* area;
+    size_t bin_id;
+};
+
+// Returns NULL for AvailableArea.aera if none of the available areas can fit the shape
+AvailableArea FindNextAvailableArea(
     DynamicArrayEx<Bin,      LinearAllocatorPool>* bins,
     DynamicArrayEx<size_t,   LinearAllocatorPool>* used_bins_count,
     DynamicArrayEx<Vec2Many, LinearAllocatorPool>* available_bins,
@@ -33,5 +31,19 @@ Rect* FindNextAvailableArea(
     Vec2 size,
     LinearAllocatorPool *allocator
 );
+
+void Place(
+    DynamicArrayEx<Bin, LinearAllocatorPool>* bins,
+    DynamicArrayEx<DynamicArrayEx<Rect, LinearAllocatorPool>, LinearAllocatorPool>* available_areas,
+    RectNamed* rect,
+    AvailableArea area,
+    LinearAllocatorPool* allocator
+);
+
+struct RectPair {
+    Rect a, b;
+};
+
+RectPair SplitVertical(Rect *rect, Vec2 size);
 
 #endif

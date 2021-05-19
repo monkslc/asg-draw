@@ -15,14 +15,10 @@ D2D1_SIZE_F Vec2::Size() {
 
 bool Vec2::Fits(Vec2 other) {
     // TODO: better floating point comaprison
-    return this->x <= other.x && this->y <= other.y;
+    return this->x >= other.x && this->y >= other.y;
 }
 
 Vec2 Vec2::operator+(Vec2 &b) {
-    return Vec2(this->x + b.x, this->y + b.y);
-}
-
-Vec2 Vec2::operator+(Vec2 b) {
     return Vec2(this->x + b.x, this->y + b.y);
 }
 
@@ -55,3 +51,30 @@ Vec2 Vec2::operator-() {
 Vec2Many::Vec2Many(Vec2 vec2, float quantity) : vec2(vec2), quantity(quantity) {};
 
 Vec2Named::Vec2Named(Vec2 vec2, size_t id) : vec2(vec2), id(id) {};
+
+Rect::Rect(Vec2 pos, Vec2 size) : pos(pos), size(size) {};
+
+float Rect::Left() {
+    return this->pos.x;
+}
+
+float Rect::Top() {
+    return this->pos.y;
+}
+
+float Rect::Right() {
+    return this->pos.x + this->size.x;
+}
+
+float Rect::Bottom() {
+    return this->pos.y + this->size.y;
+}
+
+RectNamed::RectNamed(Rect rect, size_t id) : rect(rect), id(id) {};
+
+void Union(D2D1_RECT_F *a, D2D1_RECT_F *b) {
+    a->left   = std::min<float>(a->left,   b->left);
+    a->top    = std::min<float>(a->top,    b->top);
+    a->right  = std::max<float>(a->right,  b->right);
+    a->bottom = std::max<float>(a->bottom, b->bottom);
+}

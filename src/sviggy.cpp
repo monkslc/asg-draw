@@ -234,7 +234,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         break;
 
                     case 'P':
-                        app.ActiveDoc()->RunPipeline();
+                        // TODO: this is an awkward handing off of resources
+                        if (app.documents.Length() < 2) {
+                            app.documents.Push(Document());
+                        }
+                        app.ActiveDoc()->RunPipeline(app.documents.LastPtr());
                         break;
 
                     default:

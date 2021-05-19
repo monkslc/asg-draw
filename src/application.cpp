@@ -1,7 +1,9 @@
 #include <d2d1.h>
 #include <unordered_map>
 
+#include "bin_packing.hpp"
 #include "ds.hpp"
+#include "pipeline.hpp"
 #include "sviggy.hpp"
 
 Application::Application() : documents(DynamicArray<Document>(1)), active_doc(0) {
@@ -79,7 +81,6 @@ void Document::SelectShapes(Vec2 mousedown, Vec2 mouseup) {
            this->active_shapes.Push(ActiveShape(ShapeType::Path, i));
        }
     }
-
 }
 
 void Document::SelectShape(Vec2 screen_pos) {
@@ -114,28 +115,64 @@ Vec2 Document::MousePos() {
    return  this->view.MousePos();
 }
 
-void Document::RunPipeline() {
+void Document::RunPipeline(Document *doc) {
     size_t memory_estimation = this->paths.Length() * 100;
     LinearAllocatorPool allocator = LinearAllocatorPool(memory_estimation);
-    auto collections = this->Collections(&allocator);
+    CollectionMap collections = this->Collections(&allocator);
 
-    for (auto i=0; i<collections.Capacity(); i++) {
-        auto slot = collections.Slot(i);
-        for (auto j=0; j<slot->Length(); j++) {
-            auto* entry = slot->GetPtr(j);
-            //printf("Collection: %d has %d shapes\n", entry->key, entry->value.Length());
+    // Bins will eventually come as input
+    auto bins = DynamicArrayEx<Vec2Many, LinearAllocatorPool>(1, &allocator);
+    bins.Push(Vec2Many(Vec2(48, 24), kInfinity), &allocator);
+
+    auto collection_bounds = GetCollectionBounds(this, &collections, &allocator);
+
+
+    DynamicArrayEx<Bin, LinearAllocatorPool> packed_bins = PackBins(&bins, &collection_bounds, &allocator);
+
+    // TODO: make a clone method on the dynamic array class instead of adding to the array inside the for loop
+    DynamicArray<Path> new_paths = DynamicArray<Path>(this->paths.Length());
+
+    Vec2 bin_offset = Vec2(0.0f, 0.0f);
+    for (auto i=0; i<packed_bins.Length(); i++) {
+        Bin* bin = packed_bins.GetPtr(i);
+        for (auto j=0; j<bin->rects.Length(); j++) {
+            Vec2Named packed_collection = bin->rects.Get(j);
+            DynamicArrayEx<size_t, LinearAllocatorPool>* collection = collections.GetPtr(packed_collection.id);
+
+            // TODO: right now this performs a linear search of the array. We can index the collections in a hashmap
+            // for a performance improvement later if needed
+            Rect collection_bound = FindCollectionBound(packed_collection.id, &collection_bounds);
+            for (auto shape_idx=0; shape_idx<collection->Length(); shape_idx++) {
+                size_t shape_id = collection->Get(shape_idx);
+
+                // TODO: this is bad because we now have two references to the geometry so when one of the shapes
+                // deletes its reference we will fail but we can come back to this later
+                Path duplicated_shape   = this->paths.Get(shape_id);
+                D2D1_RECT_F shape_bound = duplicated_shape.Bound();
+
+                Vec2 shape_offset = Vec2(shape_bound.left - collection_bound.Left(), shape_bound.top - collection_bound.Top());
+                Vec2 desired      = bin_offset + packed_collection.vec2 + shape_offset;
+                duplicated_shape.SetPos(desired);
+
+                new_paths.Push(duplicated_shape);
+            }
         }
+
+        bin_offset += bin->size;
     }
 
-    allocator.FreeAllocator();
+    // TODO: make sure we free all of the old paths first
+    // Right now we can't because there's quite a bit duplicated geometry
+    doc->paths = new_paths;
 
+    allocator.FreeAllocator();
     printf("Ran Pipeline :)\n\n\n");
 }
 
 // TODO: I don't LOOOOOVE the idea of using a hashmap here. The collection ids are just numbers so we might get away
 // with just using an array. On the other hand the collection id can go way above the number of paths in a document
 // so that might be a little too large. Anyway come back and think about this more later
-HashMapEx<size_t, DynamicArrayEx<size_t, LinearAllocatorPool>, LinearAllocatorPool> Document::Collections(LinearAllocatorPool *allocator) {
+CollectionMap Document::Collections(LinearAllocatorPool *allocator) {
     size_t map_capacity_estimation = this->paths.Length() / 2;
     auto collections = HashMapEx<size_t, DynamicArrayEx<size_t, LinearAllocatorPool>, LinearAllocatorPool>(map_capacity_estimation, allocator);
 

@@ -190,3 +190,11 @@ Vec2 Path::OriginalCenter() {
 D2D1::Matrix3x2F Path::TransformMatrix() {
     return ShapeTransformMatrix(this);
 }
+
+void Path::SetPos(Vec2 to) {
+    D2D1_RECT_F bound = this->Bound();
+    Vec2 current_pos  = Vec2(bound.left, bound.top);
+
+    Vec2 diff = current_pos - to;
+    this->transform.translation -= diff;
+}
