@@ -109,7 +109,7 @@ Path ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, DXState *
     }
 
     builder.Close();
-    return builder.Build();
+    return builder.Build(dx);
 }
 
 Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
@@ -160,7 +160,7 @@ Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx)
 
     }
 
-    return builder.Build();
+    return builder.Build(dx);
 }
 
 Path ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {

@@ -70,10 +70,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         return 1;
     }
 
-    ShowWindow(hwnd, nCmdShow);
+    ExitOnFailure(hr);
 
-    // This is here just for testing purposes so we have something to look at on load
-    LoadSVGFile((char *)"test-svg.svg", app.ActiveDoc(), &dxstate);
+    ShowWindow(hwnd, nCmdShow);
 
     MSG msg = { };
     while (GetMessage(&msg, NULL, 0, 0))
@@ -230,12 +229,15 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         ui.show_debug = !ui.show_debug;
                         break;
 
+                    case 'L':
+                        LoadSVGFile((char *)"test-svg.svg", app.ActiveDoc(), &dxstate);
+                        break;
+
                     case VK_OEM_2:
                         ui.show_command_prompt = !ui.show_command_prompt;
                         break;
 
                     case 'P':
-                        // TODO: this is an awkward handing off of resources
                         if (app.documents.Length() < 2) {
                             app.documents.Push(Document());
                         }
@@ -281,7 +283,7 @@ void TeardownGui() {
 void ExitOnFailure(HRESULT hr) {
     if (FAILED(hr)) {
         // TODO: display error message here or write it out to a file using something like:
-        // printf("%s\n", std::system_category().message(hr).c_str());
+        printf("%s\n", std::system_category().message(hr).c_str());
         std::exit(1);
     }
 }

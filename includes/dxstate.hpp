@@ -3,24 +3,8 @@
 
 #include "sviggy.hpp"
 
-template <typename T>
-HRESULT RenderShape(DXState *d2, T* shape) {
-    HRESULT hr;
-
-    ID2D1TransformedGeometry *geo;
-    hr = d2->factory->CreateTransformedGeometry(
-        shape->geometry,
-        shape->TransformMatrix(),
-        &geo
-    );
-    RETURN_FAIL(hr);
-
-    d2->renderTarget->DrawGeometry(geo, d2->blackBrush, kHairline);
-
-    hr = geo->Release();
-    return hr;
-}
-
+// TODO: SafeRelease is actually a terible idea because it hides pointers being null that shouldn't be
+// We should stop using it at some point
 template <typename T>
 HRESULT SafeRelease(T **h)
 {

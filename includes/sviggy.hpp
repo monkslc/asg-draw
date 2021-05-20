@@ -5,6 +5,8 @@
 #include <dxgi.h>
 #include <dwrite.h>
 #include <d2d1.h>
+#include <d2d1_1.h>
+#include <d2d1_2.h>
 #include <string>
 #include <unordered_map>
 
@@ -112,11 +114,13 @@ constexpr float kCounterClockwise = 0.0f;
 
 class Path {
     public:
-    Transformation transform;
-    ID2D1PathGeometry *geometry;
-    size_t collection;
-    DynamicArray<String> tags;
-    Path(ID2D1PathGeometry *geometry);
+    Transformation            transform;
+    ID2D1PathGeometry*        geometry;
+    ID2D1GeometryRealization* low_fidelity;
+    ID2D1TransformedGeometry* transformed_geometry;
+    size_t                    collection;
+    DynamicArray<String>      tags;
+    Path(ID2D1PathGeometry *geometry, DXState *dx);
 
     void Free();
 
@@ -131,6 +135,7 @@ class Path {
     D2D1::Matrix3x2F TransformMatrix();
 
     void SetPos(Vec2 to);
+    void RealizeGeometry(DXState* dx);
 };
 
 class PathBuilder {
@@ -145,7 +150,7 @@ class PathBuilder {
     void Cubic(Vec2 c1, Vec2 c2, Vec2 end);
     void Arc(Vec2 end, Vec2 size, float rot, D2D1_SWEEP_DIRECTION direction);
     void Close();
-    Path Build();
+    Path Build(DXState *dx);
 };
 
 enum class ShapeType {
@@ -200,6 +205,7 @@ class Document {
     void TranslateView(Vec2 amount);
     void ScrollZoom(bool in);
     Vec2 MousePos();
+    void RealizeGeometries(DXState* dx);
 
     CollectionMap Collections(LinearAllocatorPool *allocator);
 };
@@ -230,35 +236,44 @@ class UIState {
 class DXState {
     public:
     // Device Independent Direct2D resources
-    ID2D1Factory* factory;
-    IDWriteFactory *write_factory;
-    IDWriteTextFormat *debug_text_format;
-    ID2D1StrokeStyle *selection_stroke;
+    ID2D1Factory*      factory;
+    IDWriteFactory*    write_factory;
+    IDWriteTextFormat* debug_text_format;
+    ID2D1StrokeStyle*  selection_stroke;
 
     // Device dependent Direct2D resources
-    ID2D1RenderTarget* renderTarget;
+    ID2D1Device*          d2_device;
+    ID2D1DeviceContext1*  d2_device_context;
     ID2D1SolidColorBrush* lightSlateGrayBrush;
     ID2D1SolidColorBrush* cornflowerBlueBrush;
     ID2D1SolidColorBrush* blackBrush;
     ID2D1SolidColorBrush* debugBrush;
 
+
     // Direct3D resources
-    ID3D11Device* device;
-    ID3D11DeviceContext* device_context;
-    IDXGISwapChain* swap_chain;
+    ID3D11Device*           device;
+    ID3D11DeviceContext*    device_context;
+    IDXGISwapChain*         swap_chain;
+    IDXGIDevice*            dxgi_device;
+
+    // Swapchain resources
+    IDXGISurface*           dxgi_surface;
+    ID2D1Bitmap1*           bitmap_target;
     ID3D11RenderTargetView* render_target_view;
+    ID3D11Texture2D*        buffer;
+
 
     HRESULT CreateDeviceIndependentResources();
     HRESULT CreateDeviceResources(HWND hwnd);
-    HRESULT CreateRenderTarget();
-    HRESULT DiscardRenderTarget();
+    HRESULT CreateSwapchainResources();
+    HRESULT DiscardSwapchainResources();
     HRESULT DiscardDeviceResources();
     void Teardown();
     HRESULT Resize(UINT width, UINT height);
     HRESULT Render(Document *doc,  UIState *ui);
-    HRESULT RenderRects(Document *doc);
-    HRESULT RenderCircles(Document *doc);
-    HRESULT RenderPaths(Document *doc);
+    void RenderPaths(Document *doc);
+    void RenderPathsLowFidelity(Document *doc);
+    void RenderPathsHighFidelity(Document *doc);
     void RenderText(Document *doc);
     void RenderGridLines();
     void RenderDemoWindow(UIState *ui);

@@ -1,7 +1,11 @@
 #include <d2d1.h>
+#include <d2d1_2.h>
+#include <d2d1_2helper.h>
+#include <d2d1_1helper.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <dxgi.h>
+#include <dxgi1_2.h>
 
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
@@ -68,8 +72,8 @@ HRESULT DXState::CreateDeviceIndependentResources() {
 
 HRESULT DXState::CreateDeviceResources(HWND hwnd) {
     HRESULT hr = S_OK;
-    // If we have a render target assume all of our device resoruces have been created
-    if (renderTarget) {
+    // If we have a device assume all of our device resoruces have been created
+    if (this->d2_device) {
         return hr;
     }
 
@@ -93,7 +97,8 @@ HRESULT DXState::CreateDeviceResources(HWND hwnd) {
     sc_desc.Windowed = true;
 
     D3D_FEATURE_LEVEL feature_level;
-    UINT flags = D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+    // TODO: only use the debug layer in debug mode
+    UINT flags = D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_DEBUG;
 
     hr = D3D11CreateDeviceAndSwapChain(
         NULL,
@@ -111,31 +116,41 @@ HRESULT DXState::CreateDeviceResources(HWND hwnd) {
     );
     RETURN_FAIL(hr);
 
+
+    hr = this->device->QueryInterface(IID_PPV_ARGS(&this->dxgi_device));
+    RETURN_FAIL(hr);
+
+    auto props = D2D1::CreationProperties(D2D1_THREADING_MODE_SINGLE_THREADED, D2D1_DEBUG_LEVEL_WARNING, D2D1_DEVICE_CONTEXT_OPTIONS_NONE);
+    hr = ((ID2D1Factory1*)this->factory)->CreateDevice(this->dxgi_device, &this->d2_device);
+    RETURN_FAIL(hr);
+
+    hr = d2_device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, (ID2D1DeviceContext**)&this->d2_device_context);
+    RETURN_FAIL(hr);
+
+    this->CreateSwapchainResources();
+
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(this->device, this->device_context);
 
-    hr = this->CreateRenderTarget();
-    RETURN_FAIL(hr);
-
-    hr = renderTarget->CreateSolidColorBrush(
+    hr = d2_device_context->CreateSolidColorBrush(
         D2D1::ColorF(D2D1::ColorF::LightSlateGray),
         &lightSlateGrayBrush
     );
     RETURN_FAIL(hr);
 
-    hr = renderTarget->CreateSolidColorBrush(
+    hr = d2_device_context->CreateSolidColorBrush(
         D2D1::ColorF(D2D1::ColorF::CornflowerBlue),
         &cornflowerBlueBrush
     );
     RETURN_FAIL(hr);
 
-    hr = renderTarget->CreateSolidColorBrush(
+    hr = d2_device_context->CreateSolidColorBrush(
         D2D1::ColorF(D2D1::ColorF::Black),
         &blackBrush
     );
     RETURN_FAIL(hr);
 
-    hr = renderTarget->CreateSolidColorBrush(
+    hr = d2_device_context->CreateSolidColorBrush(
         D2D1::ColorF(D2D1::ColorF::Red),
         &debugBrush
     );
@@ -143,57 +158,48 @@ HRESULT DXState::CreateDeviceResources(HWND hwnd) {
     return hr;
 }
 
-HRESULT DXState::CreateRenderTarget() {
+// Swapchain resources need to be recreated everytime the window resizes
+HRESULT DXState::CreateSwapchainResources() {
     HRESULT hr = S_OK;
 
-    IDXGISurface* back_buffer;
-    hr = swap_chain->GetBuffer(
-        0,
-        IID_PPV_ARGS(&back_buffer)
+    hr = this->swap_chain->GetBuffer(0, IID_PPV_ARGS(&this->dxgi_surface));
+    RETURN_FAIL(hr);
+
+    float dpix, dpiy;
+    this->d2_device_context->GetDpi(&dpix, &dpiy);
+    D2D1_BITMAP_PROPERTIES1 bprops = D2D1::BitmapProperties1(
+        D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+        D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE),
+        dpix, dpiy
     );
 
-    if (FAILED(hr)) {
-        return hr;
-    }
+    hr = this->d2_device_context->CreateBitmapFromDxgiSurface(this->dxgi_surface, &bprops, &this->bitmap_target);
+    RETURN_FAIL(hr);
 
-    D2D1_RENDER_TARGET_PROPERTIES render_props = D2D1::RenderTargetProperties();
-    render_props.pixelFormat = D2D1::PixelFormat(DXGI_FORMAT_UNKNOWN, D2D1_ALPHA_MODE_PREMULTIPLIED);
+    this->d2_device_context->SetTarget(this->bitmap_target);
 
-    hr = this->factory->CreateDxgiSurfaceRenderTarget(
-        back_buffer,
-        render_props,
-        &this->renderTarget
-    );
-
-    back_buffer->Release();
-
-    if (FAILED(hr)) {
-        return hr;
-    }
-
-    ID3D11Texture2D* buffer;
-    this->swap_chain->GetBuffer(0, IID_PPV_ARGS(&buffer));
-    this->device->CreateRenderTargetView(buffer, NULL, &this->render_target_view);
-    buffer->Release();
+    this->swap_chain->GetBuffer(0, IID_PPV_ARGS(&this->buffer));
+    this->device->CreateRenderTargetView(this->buffer, NULL, &this->render_target_view);
 
     return hr;
 }
 
-HRESULT DXState::DiscardRenderTarget() {
+HRESULT DXState::DiscardSwapchainResources() {
     HRESULT hr = S_OK;
-    if (this->render_target_view) {
-        hr = this->render_target_view->Release();
-        this->render_target_view = NULL;
-    }
 
-    if (FAILED(hr)) {
-        return hr;
-    }
+    hr = SafeRelease(&this->dxgi_surface);
+    RETURN_FAIL(hr);
 
-    if (this->renderTarget) {
-        hr = this->renderTarget->Release();
-        this->renderTarget = NULL;
-    }
+    hr = SafeRelease(&this->bitmap_target);
+    RETURN_FAIL(hr);
+
+    hr = SafeRelease(&this->render_target_view);
+    RETURN_FAIL(hr);
+
+    hr = SafeRelease(&this->buffer);
+    RETURN_FAIL(hr);
+
+    this->d2_device_context->SetTarget(NULL);
 
     return hr;
 }
@@ -201,7 +207,10 @@ HRESULT DXState::DiscardRenderTarget() {
 HRESULT DXState::DiscardDeviceResources() {
     HRESULT hr = S_OK;
 
-    hr = SafeRelease(&this->renderTarget);
+    hr = SafeRelease(&this->d2_device);
+    RETURN_FAIL(hr);
+
+    hr = SafeRelease(&this->d2_device_context);
     RETURN_FAIL(hr);
 
     hr = SafeRelease(&this->lightSlateGrayBrush);
@@ -216,19 +225,16 @@ HRESULT DXState::DiscardDeviceResources() {
     hr = SafeRelease(&this->debugBrush);
     RETURN_FAIL(hr);
 
-    hr = this->DiscardRenderTarget();
+    hr = SafeRelease(&this->device);
     RETURN_FAIL(hr);
 
-    hr = this->device->Release();
+    hr = SafeRelease(&this->dxgi_device);
     RETURN_FAIL(hr);
 
-    hr = this->device_context->Release();
+    hr = this->DiscardSwapchainResources();
     RETURN_FAIL(hr);
 
-    hr = this->swap_chain->Release();
-    RETURN_FAIL(hr);
-
-    hr = this->render_target_view->Release();
+    hr = SafeRelease(&this->swap_chain);
     RETURN_FAIL(hr);
 
     return hr;
@@ -246,13 +252,13 @@ void DXState::Teardown() {
 HRESULT DXState::Resize(UINT width, UINT height) {
     HRESULT hr = S_OK;
     if (this->device) {
-        hr = this->DiscardRenderTarget();
+        hr = this->DiscardSwapchainResources();
         RETURN_FAIL(hr);
 
         hr = this->swap_chain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
         RETURN_FAIL(hr);
 
-        hr = this->CreateRenderTarget();
+        hr = this->CreateSwapchainResources();
         RETURN_FAIL(hr);
     }
 
@@ -266,8 +272,8 @@ HRESULT DXState::Render(Document *doc, UIState *ui) {
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    this->renderTarget->BeginDraw();
-    this->renderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
+    this->d2_device_context->BeginDraw();
+    this->d2_device_context->Clear(D2D1::ColorF(D2D1::ColorF::White));
 
     this->RenderDemoWindow(ui);
     this->RenderDebugWindow(ui, doc);
@@ -277,18 +283,16 @@ HRESULT DXState::Render(Document *doc, UIState *ui) {
 
     this->RenderGridLines();
 
-    this->renderTarget->SetTransform(doc->view.DocumentToScreenMat());
+    this->d2_device_context->SetTransform(doc->view.DocumentToScreenMat());
 
-    D2D1_SIZE_F rtSize = this->renderTarget->GetSize();
+    D2D1_SIZE_F rtSize = this->d2_device_context->GetSize();
     int width = static_cast<int>(rtSize.width);
     int height = static_cast<int>(rtSize.height);
 
-    hr = this->RenderPaths(doc);
-    RETURN_FAIL(hr);
-
+    this->RenderPaths(doc);
     this->RenderText(doc);
 
-    hr = this->renderTarget->EndDraw();
+    hr = this->d2_device_context->EndDraw();
     if (hr == D2DERR_RECREATE_TARGET) {
         this->DiscardDeviceResources();
     } else {
@@ -304,36 +308,47 @@ HRESULT DXState::Render(Document *doc, UIState *ui) {
     return hr;
 }
 
-HRESULT DXState::RenderPaths(Document *doc) {
+void DXState::RenderPaths(Document *doc) {
     HRESULT hr = S_OK;
 
-    for (auto i=0; i<doc->paths.Length(); i++) {
-        Path *path = doc->paths.GetPtr(i);
-
-        hr = RenderShape(this, path);
-        RETURN_FAIL(hr);
+    if (doc->view.scale < 0.1) {
+        return this->RenderPathsLowFidelity(doc);
     }
 
-    return hr;
+    return this->RenderPathsHighFidelity(doc);
+}
+
+void DXState::RenderPathsLowFidelity(Document *doc) {
+    for (auto i=0; i<doc->paths.Length(); i++) {
+        Path *path = doc->paths.GetPtr(i);
+        this->d2_device_context->DrawGeometryRealization(path->low_fidelity, this->blackBrush);
+    }
+}
+
+void DXState::RenderPathsHighFidelity(Document *doc) {
+    for (auto i=0; i<doc->paths.Length(); i++) {
+        Path *path = doc->paths.GetPtr(i);
+        this->d2_device_context->DrawGeometry(path->transformed_geometry, this->blackBrush, kHairline);
+    }
 }
 
 void DXState::RenderText(Document *doc) {
     for (auto i=0; i<doc->texts.Length(); i++) {
         Text* text = doc->texts.GetPtr(i);
 
-        this->renderTarget->DrawTextLayout(text->pos.D2Point(), text->layout, this->blackBrush, D2D1_DRAW_TEXT_OPTIONS_NONE);
+        this->d2_device_context->DrawTextLayout(text->pos.D2Point(), text->layout, this->blackBrush, D2D1_DRAW_TEXT_OPTIONS_NONE);
     }
 }
 
 void DXState::RenderGridLines() {
-    this->renderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-    D2D1_SIZE_F size = renderTarget->GetSize();
+    this->d2_device_context->SetTransform(D2D1::Matrix3x2F::Identity());
+    D2D1_SIZE_F size = d2_device_context->GetSize();
 
     int width  = static_cast<int>(size.width);
     int height = static_cast<int>(size.height);
 
     for (int x = 0; x < width; x += 10) {
-        renderTarget->DrawLine(
+        d2_device_context->DrawLine(
             D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
             D2D1::Point2F(static_cast<FLOAT>(x), size.height),
             cornflowerBlueBrush,
@@ -342,7 +357,7 @@ void DXState::RenderGridLines() {
     }
 
     for (int y = 0; y < height; y += 10) {
-        renderTarget->DrawLine(
+        d2_device_context->DrawLine(
             D2D1::Point2F(0.0f, static_cast<FLOAT>(y)),
             D2D1::Point2F(size.width, static_cast<FLOAT>(y)),
             cornflowerBlueBrush,
@@ -364,8 +379,11 @@ void DXState::RenderDebugWindow(UIState *ui, Document *doc) {
 
     ImGui::Begin("Debug");
     ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+    ImGui::Text("%zu paths", doc->paths.Length()); // heh? why is that 0
     ImGui::Text("Mouse Screen: (%.3f, %.3f)", doc->view.mouse_pos_screen.x, doc->view.mouse_pos_screen.y);
     ImGui::Text("Mouse Document: (%.3f, %.3f)", doc->MousePos().x, doc->MousePos().y);
+    ImGui::Text("Scale: %.3f", doc->view.scale);
+    ImGui::Text("View: (%.3f, %.3f)", doc->view.start.x, doc->view.start.y);
     ImGui::End();
 }
 
@@ -463,6 +481,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             size_t *collection;
             const char *shape_type;
             DynamicArray<String> *tags;
+            Path *path;
 
             switch (shape->type) {
                 case ShapeType::Path: {
@@ -471,6 +490,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
                     shape_type = "Path";
                     collection = &doc->paths.GetPtr(id)->collection;
                     tags = &doc->paths.GetPtr(id)->tags;
+                    path = doc->paths.GetPtr(id);
                     break;
                 }
 
@@ -490,12 +510,12 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             ImGui::Text("Pos: (%.3f, %.3f)", bound.left, bound.top);
             ImGui::Text("Size: (%.3f, %.3f)", bound.right - bound.left, bound.bottom - bound.top);
 
-            ImGui::DragFloat("Translation x", &transform->translation.x, 0.125);
-            ImGui::DragFloat("Translation y", &transform->translation.y, 0.125);
-            ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125);
-            ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125);
+            if(ImGui::DragFloat("Translation x", &transform->translation.x, 0.125)) path->RealizeGeometry(this);
+            if(ImGui::DragFloat("Translation y", &transform->translation.y, 0.125)) path->RealizeGeometry(this);
+            if(ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125)) path->RealizeGeometry(this);
+            if(ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125)) path->RealizeGeometry(this);
 
-            ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f);
+            if(ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f)) path->RealizeGeometry(this);
 
             ImGui::Text("Tags:");
             for (auto i=0; i<tags->Length(); i++) {
@@ -536,8 +556,8 @@ void DXState::RenderActiveSelectionBox(Document *doc, UIState *ui) {
 
     D2D1_RECT_F box = D2D1::RectF(left, top, right, bot);
 
-    this->renderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-    this->renderTarget->DrawRectangle(box, this->blackBrush, 1.0, this->selection_stroke);
+    this->d2_device_context->SetTransform(D2D1::Matrix3x2F::Identity());
+    this->d2_device_context->DrawRectangle(box, this->blackBrush, 1.0, this->selection_stroke);
 }
 
 Vec2 ParseVec(char **iter) {

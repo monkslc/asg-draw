@@ -1,4 +1,5 @@
 #include <d2d1.h>
+#include <d2d1_2.h>
 
 #include "ds.hpp"
 #include "shapes.hpp"
@@ -13,7 +14,7 @@ D2D1::Matrix3x2F Transformation::Matrix(Vec2 center) {
     D2D1::Matrix3x2F rotation = D2D1::Matrix3x2F::Rotation(this->rotation, center.D2Point());
     D2D1::Matrix3x2F translation = D2D1::Matrix3x2F::Translation(this->translation.Size());
     D2D1::Matrix3x2F scale = D2D1::Matrix3x2F::Scale(this->scale.Size(), center.D2Point());
-    return rotation * scale * translation;
+    return scale * rotation * translation;
 };
 
 Text::Text(Vec2 pos, String text, DXState* dx) : pos(pos), text(text), transform(Transformation()) {
@@ -42,7 +43,6 @@ Text::Text(Vec2 pos, String text, DXState* dx) : pos(pos), text(text), transform
         10, // to me how I determine the width and height of the text at this point
         &this->layout
     );
-
 };
 
 void Text::Free() {
@@ -58,7 +58,7 @@ float Text::Y() {
     return this->pos.y;
 }
 
-PathBuilder::PathBuilder(DXState *dx) : has_open_figure(false){
+PathBuilder::PathBuilder(DXState *dx) : has_open_figure(false) {
     HRESULT hr;
 
     hr = dx->factory->CreatePathGeometry(&this->geometry);
@@ -106,21 +106,33 @@ void PathBuilder::Close() {
     }
 }
 
-Path PathBuilder::Build() {
+Path PathBuilder::Build(DXState *dx) {
+    HRESULT hr = S_OK;
+
     if (this->has_open_figure) {
         this->geometry_sink->EndFigure(D2D1_FIGURE_END_OPEN);
     }
 
-    this->geometry_sink->Close();
-    this->geometry_sink->Release();
+    hr = this->geometry_sink->Close();
+    hr = this->geometry_sink->Release();
 
-    return Path(this->geometry);
+    ExitOnFailure(hr);
+
+    return Path(this->geometry, dx);
 }
 
-Path::Path(ID2D1PathGeometry *geometry) : geometry(geometry), transform(Transformation()), collection(0), tags(DynamicArray<String>(1)) {};
+Path::Path(ID2D1PathGeometry *geometry, DXState *dx) :
+    geometry(geometry),
+    transform(Transformation()),
+    collection(0),
+    tags(DynamicArray<String>(0)) {
+    this->RealizeGeometry(dx);
+};
 
 void Path::Free() {
     this->tags.FreeAll();
+    this->low_fidelity->Release();
+    this->transformed_geometry->Release();
     this->geometry->Release();
 }
 
@@ -129,8 +141,7 @@ Path Path::CreateLine(Vec2 from, Vec2 to, DXState *dx) {
     builder.Move(from);
     builder.Line(to);
 
-    return builder.Build();
-
+    return builder.Build(dx);
 }
 
 Path Path::CreateRect(Vec2 pos, Vec2 size, DXState *dx) {
@@ -147,7 +158,7 @@ Path Path::CreateRect(Vec2 pos, Vec2 size, DXState *dx) {
     builder.Line(Vec2(left,  bot));
 
     builder.Close();
-    return builder.Build();
+    return builder.Build(dx);
 }
 
 Path Path::CreateCircle(Vec2 center, float radius, DXState *dx) {
@@ -168,7 +179,7 @@ Path Path::CreateCircle(Vec2 center, float radius, DXState *dx) {
     builder.Move(start);
     builder.Arc(end, size, 0.0f, D2D1_SWEEP_DIRECTION_COUNTER_CLOCKWISE);
 
-    return builder.Build();
+    return builder.Build(dx);
 }
 
 D2D1_RECT_F Path::Bound() {
@@ -197,4 +208,23 @@ void Path::SetPos(Vec2 to) {
 
     Vec2 diff = current_pos - to;
     this->transform.translation -= diff;
+}
+
+constexpr float kFloatLowFidelity = 1.0f;
+void Path::RealizeGeometry(DXState* dx) {
+    HRESULT hr;
+
+    float dpix, dpiy;
+    dx->d2_device_context->GetDpi(&dpix, &dpiy);
+
+    hr = dx->factory->CreateTransformedGeometry(
+        this->geometry,
+        this->TransformMatrix(),
+        &this->transformed_geometry
+    );
+    ExitOnFailure(hr);
+
+
+    hr = dx->d2_device_context->CreateStrokedGeometryRealization(this->transformed_geometry, kFloatLowFidelity, kHairline, NULL, &this->low_fidelity);
+    ExitOnFailure(hr);
 }

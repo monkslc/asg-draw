@@ -115,6 +115,13 @@ Vec2 Document::MousePos() {
    return  this->view.MousePos();
 }
 
+void Document::RealizeGeometries(DXState* dx) {
+   for (auto i=0; i<this->paths.Length(); i++)  {
+       Path *path = this->paths.GetPtr(i);
+       path->RealizeGeometry(dx);
+   }
+}
+
 // TODO: I don't LOOOOOVE the idea of using a hashmap here. The collection ids are just numbers so we might get away
 // with just using an array. On the other hand the collection id can go way above the number of paths in a document
 // so that might be a little too large. Anyway come back and think about this more later
