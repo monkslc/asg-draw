@@ -97,8 +97,11 @@ HRESULT DXState::CreateDeviceResources(HWND hwnd) {
     sc_desc.Windowed = true;
 
     D3D_FEATURE_LEVEL feature_level;
-    // TODO: only use the debug layer in debug mode
-    UINT flags = D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_DEBUG;
+    UINT flags = D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+
+    #ifdef DEBUG
+    flags |= D3D11_CREATE_DEVICE_DEBUG;
+    #endif
 
     hr = D3D11CreateDeviceAndSwapChain(
         NULL,

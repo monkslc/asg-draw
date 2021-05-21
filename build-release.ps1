@@ -1,4 +1,4 @@
-clang --debug -D DEBUG -I ./includes -I external -o sviggy.exe `
+clang -I ./includes -I external -O3 -o sviggy-release.exe `
     src/sviggy.cpp `
     src/svg.cpp `
     src/dx_state.cpp `

@@ -32,8 +32,9 @@ SysAllocator global_allocator = SysAllocator();
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
     HRESULT hr;
 
-    // TODO: only do this in debug mode
+    #ifdef DEBUG
     CreateDebugConsole();
+    #endif
 
     CreateGuiContext();
 
