@@ -340,17 +340,19 @@ class KeyValuePair {
     KeyValuePair(K key, V value) : key(key), value(value) {};
 };
 
+constexpr float kMaxLoad          = 0.85;
 constexpr size_t kDefaultSlotSize = 5;
 template <typename K, typename V, typename A>
 class HashMapEx {
     public:
     DynamicArrayEx<KeyValuePair<K, V>, A> *data;
     size_t capacity;
+    size_t size;
 
-    HashMapEx(size_t capacity, A *allocator) : capacity(capacity) {
+    HashMapEx(size_t capacity, A *allocator) : size(0), capacity(capacity) {
         this->data = allocator->template Alloc<DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>>(capacity);
         for (auto i=0; i<capacity; i++) {
-            data[i] = DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>(kDefaultSlotSize, allocator);
+            data[i] = DynamicArrayEx<KeyValuePair<K, V>, A>(kDefaultSlotSize, allocator);
         }
     }
 
@@ -374,7 +376,6 @@ class HashMapEx {
                 slot->GetPtr(j)->key.Free();
             }
         }
-
     }
 
     void FreeValues() {
@@ -407,8 +408,29 @@ class HashMapEx {
             }
         }
 
+        this->size++;
         hash_slot->Push(KeyValuePair<K, V>(key, value), allocator);
+
+        if (size / capacity > 0.85) {
+            this->Expand(allocator);
+        }
+
         return &hash_slot->LastPtr()->value;
+    }
+
+    void Expand(A* allocator) {
+        size_t new_capacity = this->capacity * 2;
+        HashMapEx<K, V, A> new_map = HashMapEx<K, V, A>(new_capacity, allocator);
+        for (auto i=0; i<this->capacity; i++) {
+            DynamicArrayEx<KeyValuePair<K, V>, A>* slot = &this->data[i];
+            for (auto j=0; j<slot->Length(); j++) {
+                KeyValuePair<K, V>* entry = slot->GetPtr(j);
+                new_map.Set(entry->key, entry->value, allocator);
+            }
+        }
+
+        this->Free(allocator);
+        *this = new_map;
     }
 
     // Returns null if no matching entry is found is not found
