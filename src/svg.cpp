@@ -23,6 +23,7 @@ void LoadSVGFile(char *file, Document *doc, DXState *dx) {
     }
 
     pugi::xml_object_range<pugi::xml_node_iterator> nodes = svg_tree.children();
+
     AddNodesToDocument(&viewport, nodes, doc, dx);
 }
 

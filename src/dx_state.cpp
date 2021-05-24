@@ -322,16 +322,18 @@ void DXState::RenderPaths(Document *doc) {
 }
 
 void DXState::RenderPathsLowFidelity(Document *doc) {
-    for (auto i=0; i<doc->paths.Length(); i++) {
-        Path *path = doc->paths.GetPtr(i);
-        this->d2_device_context->DrawGeometryRealization(path->low_fidelity, this->blackBrush);
+    ID2D1GeometryRealization** data = doc->low_fidelities.Data();
+    for (auto i=0; i<doc->low_fidelities.Length(); i++) {
+        this->d2_device_context->DrawGeometryRealization(*data, this->blackBrush);
+        data++;
     }
 }
 
 void DXState::RenderPathsHighFidelity(Document *doc) {
-    for (auto i=0; i<doc->paths.Length(); i++) {
-        Path *path = doc->paths.GetPtr(i);
-        this->d2_device_context->DrawGeometry(path->transformed_geometry, this->blackBrush, kHairline);
+    ID2D1TransformedGeometry** data = doc->transformed_geometries.Data();
+    for (auto i=0; i<doc->transformed_geometries.Length(); i++) {
+        this->d2_device_context->DrawGeometry(*data, this->blackBrush, kHairline);
+        data++;
     }
 }
 
@@ -382,7 +384,8 @@ void DXState::RenderDebugWindow(UIState *ui, Document *doc) {
 
     ImGui::Begin("Debug");
     ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-    ImGui::Text("%zu paths", doc->paths.Length()); // heh? why is that 0
+    ImGui::Text("%zu paths", doc->transformed_geometries.Length());
+    ImGui::Text("%zu texts", doc->texts.Length());
     ImGui::Text("Mouse Screen: (%.3f, %.3f)", doc->view.mouse_pos_screen.x, doc->view.mouse_pos_screen.y);
     ImGui::Text("Mouse Document: (%.3f, %.3f)", doc->MousePos().x, doc->MousePos().y);
     ImGui::Text("Scale: %.3f", doc->view.scale);
@@ -435,7 +438,7 @@ void DXState::RenderCommandPrompt(UIState *ui, Document *doc) {
 
             Vec2 pos = ParseVec(&iter);
 
-            doc->paths.Push(Path::CreateRect(pos, size, this));
+            doc->AddNewPath(Path::CreateRect(pos, size, this));
 
             CommandPromptReset(ui);
             goto CmdPromptEnd;
@@ -477,57 +480,35 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
     for (auto i=0; i<doc->active_shapes.Length(); i++) {
         ActiveShape *shape = doc->active_shapes.GetPtr(i);
 
-        int id = shape->index;
-        if (ImGui::TreeNode(shape, "Shape %d\n", id)) {
-            Transformation* transform;
-            D2D1_RECT_F bound;
-            size_t *collection;
-            const char *shape_type;
-            DynamicArray<String> *tags;
-            Path *path;
+        if (ImGui::TreeNode(shape, "Shape %zu\n", shape->id)) {
+            Transformation* transform = doc->transformations.GetPtr(shape->id);
+            D2D1_RECT_F bound = doc->GeometryBound(shape->id);
+            size_t collection = *doc->collections.GetPtr(shape->id);
 
-            switch (shape->type) {
-                case ShapeType::Path: {
-                    transform = &doc->paths.GetPtr(id)->transform;
-                    bound = doc->paths.Get(id).Bound();
-                    shape_type = "Path";
-                    collection = &doc->paths.GetPtr(id)->collection;
-                    tags = &doc->paths.GetPtr(id)->tags;
-                    path = doc->paths.GetPtr(id);
-                    break;
-                }
-
-                case ShapeType::Text: {
-                    shape_type = "Text";
-                    break;
-                }
-
-                default:
-                    break;
-            }
-
-            ImGui::Text("Shape Id: %d", id);
-            ImGui::Text("Shape Type: %s", shape_type);
-            ImGui::InputScalar("Collection", ImGuiDataType_U32, collection);
+            ImGui::Text("Shape Id: %zu", shape->id);
+            ImGui::Text("Collection: %zu", collection);
 
             ImGui::Text("Pos: (%.3f, %.3f)", bound.left, bound.top);
             ImGui::Text("Size: (%.3f, %.3f)", bound.right - bound.left, bound.bottom - bound.top);
 
-            if(ImGui::DragFloat("Translation x", &transform->translation.x, 0.125)) path->RealizeGeometry(this);
-            if(ImGui::DragFloat("Translation y", &transform->translation.y, 0.125)) path->RealizeGeometry(this);
-            if(ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125)) path->RealizeGeometry(this);
-            if(ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125)) path->RealizeGeometry(this);
+            if(ImGui::DragFloat("Translation x", &transform->translation.x, 0.125)) doc->RealizeGeometry(this, shape->id);
+            if(ImGui::DragFloat("Translation y", &transform->translation.y, 0.125)) doc->RealizeGeometry(this, shape->id);
+            if(ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125)) doc->RealizeGeometry(this, shape->id);
+            if(ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125)) doc->RealizeGeometry(this, shape->id);
 
-            if(ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f)) path->RealizeGeometry(this);
+            if(ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f)) doc->RealizeGeometry(this, shape->id);
 
             ImGui::Text("Tags:");
-            for (auto i=0; i<tags->Length(); i++) {
-                String *tag = tags->GetPtr(i);
-                ImGui::Text("%s", tag->CStr());
+            DynamicArray<String>* tags = doc->tags_index.GetPtr(shape->id);
+            if (tags) {
+                for (auto i=0; i<tags->Length(); i++) {
+                    String *tag = tags->GetPtr(i);
+                    ImGui::Text("%s", tag->CStr());
+                }
             }
 
             if (ImGui::InputText("Add Tag", tag_buf, ARRAYSIZE(tag_buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
-                tags->Push(String(tag_buf));
+                doc->AddTag(shape->id, tag_buf);
                 ClearBuf(tag_buf);
             }
 
@@ -536,13 +517,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
     }
 
     if(ImGui::Button("Collect")) {
-        size_t collection = doc->NextCollection();
-        for (auto i=0; i<doc->active_shapes.Length(); i++) {
-            ActiveShape *shape = doc->active_shapes.GetPtr(i);
-
-            Path *path = doc->paths.GetPtr(shape->index);
-            path->collection = collection;
-        }
+        doc->CollectActiveShapes();
     }
 
 

@@ -9,6 +9,7 @@
 #endif
 
 #include <d2d1.h>
+#include <fileapi.h>
 #include <windows.h>
 #include <windowsx.h>
 
@@ -230,9 +231,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         ui.show_debug = !ui.show_debug;
                         break;
 
-                    case 'L':
-                        LoadSVGFile((char *)"test-svg.svg", app.ActiveDoc(), &dxstate);
+                    case 'L': {
+                        // TODO: clean up this mess
+                        const wchar_t* file = L"large-large-comp.svg";
+                        WIN32_FILE_ATTRIBUTE_DATA fad;
+                        if(!GetFileAttributesEx(file, GetFileExInfoStandard, &fad)) {
+                            std::exit(1);
+                        }
+
+                        size_t shape_estimation = fad.nFileSizeLow / 250;
+                        app.documents.Push(Document(shape_estimation));
+                        app.ActivateDoc(app.documents.Length() - 1);
+
+                        LoadSVGFile((char *)"large-large-comp.svg", app.ActiveDoc(), &dxstate);
                         break;
+                    }
 
                     case VK_OEM_2:
                         ui.show_command_prompt = !ui.show_command_prompt;
@@ -240,7 +253,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
                     case 'P':
                         if (app.documents.Length() < 2) {
-                            app.documents.Push(Document());
+                            app.documents.Push(Document(100));
                         }
                         RunPipeline(app.ActiveDoc(), app.documents.GetPtr(1));
                         break;

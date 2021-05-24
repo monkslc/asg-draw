@@ -228,3 +228,14 @@ void Path::RealizeGeometry(DXState* dx) {
     hr = dx->d2_device_context->CreateStrokedGeometryRealization(this->transformed_geometry, kFloatLowFidelity, kHairline, NULL, &this->low_fidelity);
     ExitOnFailure(hr);
 }
+
+Vec2 GeometryCenter(ID2D1Geometry* geometry) {
+   D2D1_RECT_F bound;
+   HRESULT hr = geometry->GetBounds(NULL, &bound);
+   ExitOnFailure(hr);
+
+   float x = (bound.left + bound.right ) / 2.0f;
+   float y = (bound.top  + bound.bottom) / 2.0f;
+
+   return Vec2(x, y);
+}

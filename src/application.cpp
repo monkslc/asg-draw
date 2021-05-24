@@ -6,8 +6,10 @@
 #include "pipeline.hpp"
 #include "sviggy.hpp"
 
+constexpr size_t kDefaultEstimatedShapes = 1000;
+
 Application::Application() : documents(DynamicArray<Document>(1)), active_doc(0) {
-    this->documents.Push(Document());
+    this->documents.Push(Document(kDefaultEstimatedShapes));
 };
 
 void Application::Free() {
@@ -26,7 +28,7 @@ void Application::ActivateDoc(size_t index) {
     if (this->documents.Length() <= index) {
         auto i = documents.Length();
         while (i <= index) {
-            this->documents.Push(Document());
+            this->documents.Push(Document(kDefaultEstimatedShapes));
             i++;
         }
     }
@@ -34,22 +36,103 @@ void Application::ActivateDoc(size_t index) {
     this->active_doc = index;
 }
 
-Document::Document() : texts(DynamicArray<Text>(10)), paths(DynamicArray<Path>(10)), active_shapes(DynamicArray<ActiveShape>(5)) {};
+Document::Document(size_t estimated_shapes) :
+    geometries(HashMap<size_t, ID2D1PathGeometry*>(estimated_shapes)),
+
+    transformed_geometries_index(HashMap<size_t, size_t>(estimated_shapes)),
+    reverse_transformed_geometries_index(HashMap<size_t, size_t>(estimated_shapes)),
+    transformed_geometries(DynamicArray<ID2D1TransformedGeometry*>(estimated_shapes)),
+
+    reverse_collections_index(HashMap<size_t, DynamicArray<size_t>>(estimated_shapes)),
+    collections(HashMap<size_t, size_t>(estimated_shapes)),
+
+    tags_index(HashMap<size_t, DynamicArray<String>>(estimated_shapes)),
+    reverse_tags_index(HashMap<String, DynamicArray<size_t>>(estimated_shapes)),
+
+    low_fidelities(DynamicArray<ID2D1GeometryRealization*>(estimated_shapes)),
+    low_fidelities_index(HashMap<size_t, size_t>(estimated_shapes)),
+
+    transformations(HashMap<size_t, Transformation>(estimated_shapes)),
+    texts(DynamicArray<Text>(10)),
+    active_shapes(DynamicArray<ActiveShape>(5)) {};
 
 void Document::Free() {
     this->texts.FreeAll();
-    this->paths.FreeAll();
+
+    // Geometry and transformations
+    for (auto i=0; i<this->geometries.Capacity(); i++) {
+        auto slot = this->geometries.Slot(i);
+        for (auto j=0; j<slot->Length(); j++) {
+            auto entry = slot->GetPtr(j);
+            entry->value->Release();
+        }
+    }
+    this->geometries.Free();
+    this->transformations.Free();
+
+    // Transformed geometries
+    for (auto i=0; i<this->transformed_geometries.Length(); i++) {
+        this->transformed_geometries.Get(i)->Release();
+    }
+    this->transformed_geometries.Free();
+    this->transformed_geometries_index.Free();
+    this->reverse_transformed_geometries_index.Free();
+
+    // Low fidelities
+    for (auto i=0; i<this->low_fidelities.Length(); i++) {
+        this->low_fidelities.Get(i)->Release();
+    }
+    this->low_fidelities.Free();
+    this->low_fidelities_index.Free();
+
+    // Collections
+    this->collections.Free();
+    this->reverse_collections_index.FreeValues();
+    this->reverse_collections_index.Free();
+
+    // Tags
+    // Tags index Strings don't have to be freed because they will be freed in reverse_tags_index
+    this->tags_index.FreeValues();
+    this->tags_index.Free();
+    this->reverse_tags_index.FreeKeyValues();
+    this->reverse_tags_index.Free();
+
     this->active_shapes.Free();
 }
 
 void Document::AddNewPath(Path p) {
-    p.collection = this->NextCollection();
-    this->paths.Push(p);
+    size_t next_collection = this->NextCollection();
+    size_t next_id = this->NextId();
+
+    this->geometries.Set(this->next_id, p.geometry);
+
+    size_t lf_array_index = this->low_fidelities.Length();
+    this->low_fidelities.Push(p.low_fidelity);
+    this->low_fidelities_index.Set(this->next_id, lf_array_index);
+
+    size_t tg_array_index = this->transformed_geometries.Length();
+    this->reverse_transformed_geometries_index.Set(tg_array_index, this->next_id);
+    this->transformed_geometries_index.Set(this->next_id, tg_array_index);
+    this->transformed_geometries.Push(p.transformed_geometry);
+
+    this->transformations.Set(this->next_id, p.transform);
+
+    this->collections.Set(this->next_id, next_collection);
+    DynamicArray<size_t>* collection = this->reverse_collections_index.GetPtrOrDefault(next_collection);
+    collection->Push(this->next_id);
+
+    this->next_id++;
 }
 
 size_t Document::NextCollection() {
     size_t next = this->next_collection;
     this->next_collection++;
+    return next;
+}
+
+size_t Document::NextId() {
+    size_t next = this->next_id;
+    this->next_id++;
     return next;
 }
 
@@ -73,13 +156,16 @@ void Document::SelectShapes(Vec2 mousedown, Vec2 mouseup) {
     Vec2 end   = Vec2(maxx, maxy);
 
     D2D1_RECT_F selection = D2D1::RectF(start.x, start.y, end.x, end.y);
-    for (auto i=0; i<this->paths.Length(); i++) {
-       Path *path = this->paths.GetPtr(i);
-       D2D1_RECT_F bound = path->Bound();
 
-       if (EntirelyContains(&selection, &bound)) {
-           this->active_shapes.Push(ActiveShape(ShapeType::Path, i));
-       }
+    for (auto i=0; i<this->transformed_geometries.Length(); i++) {
+        ID2D1TransformedGeometry* geo = this->transformed_geometries.Get(i);
+        D2D1_RECT_F bound;
+        HRESULT hr = geo->GetBounds(NULL, &bound);
+        ExitOnFailure(hr);
+        if (EntirelyContains(&selection, &bound)) {
+            size_t shape_id = *this->reverse_transformed_geometries_index.GetPtr(i);
+            this->active_shapes.Push(ActiveShape(shape_id));
+        }
     }
 }
 
@@ -90,15 +176,14 @@ void Document::SelectShape(Vec2 screen_pos) {
 
     D2D1::Matrix3x2F doc_to_screen = this->view.DocumentToScreenMat();
 
-    for (auto i=0; i<this->paths.Length(); i++) {
-        Path *path = this->paths.GetPtr(i);
-
+    for (auto i=0; i<this->transformed_geometries.Length(); i++) {
+        ID2D1TransformedGeometry* geo = this->transformed_geometries.Get(i);
         BOOL contains_point;
-        path->geometry->StrokeContainsPoint(point, kHairline, NULL, path->TransformMatrix() * doc_to_screen, &contains_point);
-
+        HRESULT hr = geo->StrokeContainsPoint(point, kHairline, NULL, &doc_to_screen, &contains_point);
+        ExitOnFailure(hr);
         if (contains_point) {
-            this->active_shapes.Push(ActiveShape(ShapeType::Path, i));
-            return;
+            size_t shape_id = *this->reverse_transformed_geometries_index.GetPtr(i);
+            this->active_shapes.Push(ActiveShape(shape_id));
         }
     }
 }
@@ -115,32 +200,78 @@ Vec2 Document::MousePos() {
    return  this->view.MousePos();
 }
 
-void Document::RealizeGeometries(DXState* dx) {
-   for (auto i=0; i<this->paths.Length(); i++)  {
-       Path *path = this->paths.GetPtr(i);
-       path->RealizeGeometry(dx);
-   }
+D2D1_RECT_F Document::GeometryBound(size_t id) {
+    D2D1_RECT_F bound;
+
+    ID2D1TransformedGeometry *geo = *this->transformed_geometries.GetPtr(id);
+    geo->GetBounds(NULL, &bound);
+
+    return bound;
 }
 
-// TODO: I don't LOOOOOVE the idea of using a hashmap here. The collection ids are just numbers so we might get away
-// with just using an array. On the other hand the collection id can go way above the number of paths in a document
-// so that might be a little too large. Anyway come back and think about this more later
-CollectionMap Document::Collections(LinearAllocatorPool *allocator) {
-    size_t map_capacity_estimation = this->paths.Length() / 2;
-    auto collections = HashMapEx<size_t, DynamicArrayEx<size_t, LinearAllocatorPool>, LinearAllocatorPool>(map_capacity_estimation, allocator);
+constexpr float kFloatLowFidelity = 1.0f;
+void Document::RealizeGeometry(DXState *dx, size_t id) {
+    HRESULT hr;
 
-    for (auto i=0; i<this->paths.Length(); i++) {
-        Path *path = this->paths.GetPtr(i);
+    float dpix, dpiy;
+    dx->d2_device_context->GetDpi(&dpix, &dpiy);
 
-        DynamicArrayEx<size_t, LinearAllocatorPool>* collection = collections.GetPtr(path->collection);
-        if (!collection) {
-           collection = collections.Set(path->collection, DynamicArrayEx<size_t, LinearAllocatorPool>(5, allocator), allocator);
-        }
+    ID2D1TransformedGeometry** transformed_geometry = this->transformed_geometries.GetPtr(id);
 
-        collection->Push(i, allocator);
+    ID2D1Geometry* source_geometry;
+    (*transformed_geometry)->GetSourceGeometry(&source_geometry);
+
+    Transformation* transform = this->transformations.GetPtr(id);
+    hr = dx->factory->CreateTransformedGeometry(
+        source_geometry,
+        transform->Matrix(GeometryCenter(source_geometry)),
+        transformed_geometry
+    );
+
+    source_geometry->Release();
+
+    size_t low_fidelity_index = *this->low_fidelities_index.GetPtr(id);
+    ID2D1GeometryRealization** realization = this->low_fidelities.GetPtr(low_fidelity_index);
+
+    hr = dx->d2_device_context->CreateStrokedGeometryRealization(*transformed_geometry, kFloatLowFidelity, kHairline, NULL, realization);
+}
+
+void Document::CollectActiveShapes() {
+    size_t collection = this->NextCollection();
+    for (auto i=0; i<this->active_shapes.Length(); i++) {
+        ActiveShape shape = this->active_shapes.Get(i);
+        this->SetCollection(shape.id, collection);
     }
+}
 
-    return collections;
+void Document::SetCollection(size_t shape_id, size_t new_collection_id) {
+    size_t old_collection_id = *this->collections.GetPtr(shape_id);
+    this->collections.Set(shape_id, new_collection_id);
+
+    DynamicArray<size_t>* new_collection = this->reverse_collections_index.GetPtrOrDefault(new_collection_id);
+    new_collection->Push(shape_id);
+
+    DynamicArray<size_t>* old_collection = this->reverse_collections_index.GetPtr(old_collection_id);
+
+    if (old_collection->Length() == 1) {
+        this->reverse_collections_index.Remove(old_collection_id);
+        old_collection->Free();
+    } else {
+        old_collection->Remove(shape_id);
+    }
+}
+
+void Document::AddTag(size_t shape_id, char* tag_cstr) {
+    // Currently AddTag creates one allocation for both tag indexes and places a spearate string in each
+    // which means only one of them should get freed If this becomes a problem tags can be abstracted out
+    // into their own array and referred to using indexes
+    String tag = String(tag_cstr);
+
+    DynamicArray<String>* tags = this->tags_index.GetPtrOrDefault(shape_id);
+    tags->Push(tag);
+
+    DynamicArray<size_t>* shape_ids = this->reverse_tags_index.GetPtrOrDefault(tag);
+    shape_ids->Push(shape_id);
 }
 
 View::View() : start(Vec2(0.0f, 0.0f)), mouse_pos_screen(Vec2(0.0f, 0.0f)) {};

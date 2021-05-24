@@ -22,7 +22,7 @@ constexpr float kInfinity = std::numeric_limits<float>::infinity();
 constexpr float kNegInfinity = -kInfinity;
 
 constexpr float kPixelsPerInch = 50;
-constexpr float kScaleDelta = 0.1;
+constexpr float kScaleDelta = 0.15;
 constexpr float kTranslationDelta = 1;
 constexpr float kHairline = 0.03;
 
@@ -161,10 +161,8 @@ enum class ShapeType {
 
 class ActiveShape {
     public:
-    ShapeType type;
-    int index;
-    ActiveShape(ShapeType type, int index) : type(type), index(index) {};
-    ActiveShape() : type(ShapeType::None), index(-1) {};
+    size_t id;
+    ActiveShape(size_t id) : id(id) {};
 };
 
 class View {
@@ -186,28 +184,51 @@ class View {
 // Forward declarion for the Document
 class Application;
 
-typedef HashMapEx<size_t, DynamicArrayEx<size_t, LinearAllocatorPool>, LinearAllocatorPool> CollectionMap;
 class Document {
     public:
     DynamicArray<Text> texts;
-    DynamicArray<Path> paths;
+
+    // TODO: think about combining these two since they have similar access patterns
+    HashMap<size_t, ID2D1PathGeometry*> geometries;
+    HashMap<size_t, Transformation> transformations;
+
+    DynamicArray<ID2D1TransformedGeometry*> transformed_geometries;
+    HashMap<size_t, size_t> transformed_geometries_index; // Shape id to index into transformed_geometries array
+    HashMap<size_t, size_t> reverse_transformed_geometries_index; // Index in the array to shape id
+
+    DynamicArray<ID2D1GeometryRealization*> low_fidelities;
+    HashMap<size_t, size_t> low_fidelities_index; // shape id to index in low fidelities array
+
+    HashMap<size_t, size_t> collections; // maps a shape id to its collection id
+    HashMap<size_t, DynamicArray<size_t>> reverse_collections_index; // maps collection ids to an array of shape ids
+
+    HashMap<size_t, DynamicArray<String>> tags_index; // maps a shape id to the tags it has
+    HashMap<String, DynamicArray<size_t>> reverse_tags_index; // maps tags to shape ids with that tag
+
     DynamicArray<ActiveShape> active_shapes;
     View view;
+    size_t next_id = 0;
     size_t next_collection = 0;
-    Document();
+    Document(size_t estimated_shapes);
 
     void Free();
 
     void AddNewPath(Path p);
     size_t NextCollection();
+    size_t NextId();
+
     void SelectShape(Vec2 screen_pos);
     void SelectShapes(Vec2 start, Vec2 end);
+
     void TranslateView(Vec2 amount);
     void ScrollZoom(bool in);
     Vec2 MousePos();
-    void RealizeGeometries(DXState* dx);
 
-    CollectionMap Collections(LinearAllocatorPool *allocator);
+    D2D1_RECT_F GeometryBound(size_t id);
+    void RealizeGeometry(DXState* dx, size_t id);
+    void CollectActiveShapes();
+    void SetCollection(size_t shape_id, size_t collection_id);
+    void AddTag(size_t shape_id, char* c_str);
 };
 
 class Application {
@@ -289,5 +310,6 @@ void CreateGuiContext();
 void TeardownGui();
 void ExitOnFailure(HRESULT hr);
 void Union(D2D1_RECT_F *a, D2D1_RECT_F *b);
+Vec2 GeometryCenter(ID2D1Geometry* geometry);
 
 #endif

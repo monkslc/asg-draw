@@ -1,6 +1,7 @@
 #ifndef DS_H
 #define DS_H
 
+#include <functional>
 #include <stdlib.h>
 
 // TODO: Create documentation explaining how the allocators / data structures were built and how they should be used
@@ -115,6 +116,29 @@ class DynamicArrayEx {
         this->data[index] = elem;
     }
 
+    void Remove(T elem) {
+       size_t last_index = this->length - 1;
+       for (auto i=0; i<this->length; i++) {
+           if (this->data[i] == elem) {
+               if (i != last_index) {
+                   this->data[i] = this->data[last_index];
+               }
+
+               this->length--;
+               return;
+           }
+       }
+    }
+
+    void RemoveIndex(size_t index) {
+        size_t last_index = this->length - 1;
+        if (index < last_index) {
+            this->data[index] = this->data[last_index];
+        }
+
+        this->length --;
+    }
+
     T Get(size_t index) {
         return this->data[index];
     }
@@ -165,6 +189,20 @@ class DynamicArrayEx {
 
         this->Free(allocator);
     }
+
+    bool operator==(DynamicArrayEx<T, A>& rhs) {
+        if (this->Length() != rhs.Length()) {
+            return false;
+        }
+
+        for (auto i=0; i<this->Length(); i++) {
+            if (this->data[i] != rhs.data[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 };
 
 template <typename T>
@@ -189,6 +227,14 @@ class DynamicArray {
 
     void Put(T elem, size_t index) {
         this->array.Put(elem, index);
+    }
+
+    void Remove(T elem) {
+        this->array.Remove(elem);
+    }
+
+    void RemoveIndex(size_t index) {
+        this->array.RemoveIndex(index);
     }
 
     T Get(size_t index) {
@@ -238,6 +284,10 @@ class DynamicArray {
         }
 
         this->Free();
+    }
+
+    bool operator==(DynamicArray<T>& rhs) {
+        return this->array == rhs.array;
     }
 };
 
@@ -305,7 +355,7 @@ class LinearAllocatorPool {
 class String {
     public:
     DynamicArray<char> chars;
-    String();
+    String() : chars(DynamicArray<char>(10)) {};
     String(char *c_str) : chars(DynamicArray<char>(10)) {
         char *iter = c_str;
         while (*iter) {
@@ -329,7 +379,19 @@ class String {
     void Free() {
         this->chars.Free();
     }
+
+    bool operator==(String& rhs) {
+        return this->chars == rhs.chars;
+    }
 };
+
+namespace std {
+  template <> struct hash<String> {
+    size_t operator()(String &x) {
+        return hash<char*>()(x.CStr());
+    }
+  };
+}
 
 template<typename K, typename V>
 class KeyValuePair {
@@ -418,6 +480,19 @@ class HashMapEx {
         return &hash_slot->LastPtr()->value;
     }
 
+    void Remove(K key) {
+        size_t hashed_value = std::hash<K>()(key) % this->capacity;
+        DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool> *hash_slot = &this->data[hashed_value];
+        for (auto i=0; i<hash_slot->Length(); i++) {
+            KeyValuePair<K, V> *entry = hash_slot->GetPtr(i);
+            if (entry->key == key) {
+                hash_slot->RemoveIndex(i);
+                this->size--;
+                return;
+            }
+        }
+    }
+
     void Expand(A* allocator) {
         size_t new_capacity = this->capacity * 2;
         HashMapEx<K, V, A> new_map = HashMapEx<K, V, A>(new_capacity, allocator);
@@ -497,8 +572,8 @@ class HashMap {
     }
 
     void FreeKeyValues() {
-        for (auto i=0; i<this->capacity; i++) {
-            DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>* slot = &this->data[i];
+        for (auto i=0; i<this->Capacity(); i++) {
+            DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>* slot = &this->map.data[i];
             for (auto j=0; j<slot->Length(); j++) {
                 slot->GetPtr(j)->key.Free();
                 slot->GetPtr(j)->value.Free();
@@ -508,6 +583,10 @@ class HashMap {
 
     V* Set(K key, V value) {
         return this->map.Set(key, value, &this->allocator);
+    }
+
+    void Remove(K key) {
+        this->map.Remove(key);
     }
 
     V* GetPtr(K key) {
