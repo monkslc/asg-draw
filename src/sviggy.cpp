@@ -233,7 +233,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
                     case 'L': {
                         // TODO: clean up this mess
-                        const wchar_t* file = L"large-large-comp.svg";
+                        const wchar_t* file = L"test-svg.svg";
                         WIN32_FILE_ATTRIBUTE_DATA fad;
                         if(!GetFileAttributesEx(file, GetFileExInfoStandard, &fad)) {
                             std::exit(1);
@@ -243,7 +243,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         app.documents.Push(Document(shape_estimation));
                         app.ActivateDoc(app.documents.Length() - 1);
 
-                        LoadSVGFile((char *)"large-large-comp.svg", app.ActiveDoc(), &dxstate);
+                        LoadSVGFile((char *)"test-svg.svg", app.ActiveDoc(), &dxstate);
                         break;
                     }
 
