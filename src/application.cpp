@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <d2d1.h>
 #include <unordered_map>
 
@@ -5,6 +6,8 @@
 #include "ds.hpp"
 #include "pipeline.hpp"
 #include "sviggy.hpp"
+
+#include <chrono>
 
 constexpr size_t kDefaultEstimatedShapes = 1000;
 
@@ -277,6 +280,56 @@ void Document::AddTag(size_t shape_id, char* tag_cstr) {
 
     DynamicArray<size_t>* shape_ids = this->reverse_tags_index.GetPtrOrDefault(tag);
     shape_ids->Push(shape_id);
+}
+
+void Document::AutoCollect() {
+    auto begin = std::chrono::high_resolution_clock::now();
+
+    size_t memory_estimation = this->transformed_geometries.Length() * 2 * sizeof(RectNamed);
+    LinearAllocatorPool allocator = LinearAllocatorPool(memory_estimation);
+
+    auto shape_bounds = DynamicArrayEx<RectNamed, LinearAllocatorPool>(this->transformed_geometries.Length(), &allocator);
+    for (auto i=0; i<this->transformed_geometries.Length(); i++) {
+        ID2D1TransformedGeometry* geo = this->transformed_geometries.Get(i);
+        size_t shape_id               = *this->reverse_transformed_geometries_index.GetPtr(i);
+
+        Rect bounds = GetBounds(geo);
+        shape_bounds.Push(RectNamed(bounds, shape_id), &allocator);
+    }
+
+    std::sort(shape_bounds.Data(), shape_bounds.End(), SortRectPositionXY<RectNamed>);
+
+    auto new_collections = DynamicArrayEx<RectNamed, LinearAllocatorPool>(this->transformed_geometries.Length(), &allocator);
+    auto search_from = 0;
+    for (auto i=0; i<shape_bounds.Length(); i++) {
+        RectNamed *shape = shape_bounds.GetPtr(i);
+
+        bool found_fit = false;
+        for (auto j=search_from; j<new_collections.Length(); j++) {
+            RectNamed* collection = new_collections.GetPtr(j);
+            if (collection->rect.Contains(&shape->rect)) {
+                this->SetCollection(shape->id, collection->id);
+                found_fit = true;
+                break;
+            }
+
+            // Since the shapes are sorted, the collection will not be able to hold any of the
+            // the shapes that follow if shape.left is greater than the collection right
+            if (shape->Left() > collection->Right()) {
+                search_from = j;
+            }
+        }
+
+        if (!found_fit) {
+            size_t next_collection = this->NextCollection();
+            this->SetCollection(shape->id, next_collection);
+            new_collections.Push(RectNamed(shape->rect, next_collection), &allocator);
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+    printf("Auto collect ran in %.3f seconds.\n", elapsed.count() * 1e-9);
 }
 
 View::View() : start(Vec2(0.0f, 0.0f)), mouse_pos_screen(Vec2(0.0f, 0.0f)), show_pipeline(false) {};

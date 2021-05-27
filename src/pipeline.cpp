@@ -4,7 +4,11 @@
 #include "shapes.hpp"
 #include "sviggy.hpp"
 
+#include <chrono>
+
 void RunPipeline(Document* input_doc, Document* output_doc) {
+    auto begin = std::chrono::high_resolution_clock::now();
+
     size_t memory_estimation = input_doc->transformed_geometries.Length() * 100;
     LinearAllocatorPool allocator = LinearAllocatorPool(memory_estimation);
 
@@ -14,7 +18,11 @@ void RunPipeline(Document* input_doc, Document* output_doc) {
 
     auto collection_bounds = GetCollectionBounds(input_doc, &allocator);
 
-    DynamicArrayEx<Bin, LinearAllocatorPool> packed_bins = PackBins(&bins, &collection_bounds, &allocator);
+    auto e1 = std::chrono::high_resolution_clock::now();
+
+    DynamicArrayEx<Bin, LinearAllocatorPool> packed_bins = PackBins(&bins, &collection_bounds.array, &allocator);
+
+    auto e2 = std::chrono::high_resolution_clock::now();
 
     input_doc->pipeline_shapes.Clear();
 
@@ -26,9 +34,7 @@ void RunPipeline(Document* input_doc, Document* output_doc) {
             Vec2Named packed_collection = bin->rects.Get(j);
             DynamicArray<size_t>* collection = input_doc->reverse_collections_index.GetPtr(packed_collection.id);
 
-            // TODO: right now this performs a linear search of the array. We can index the collections in a hashmap
-            // for a performance improvement later if needed
-            Rect collection_bound = FindCollectionBound(packed_collection.id, &collection_bounds);
+            Rect collection_bound = *collection_bounds.map.GetPtr(packed_collection.id);
             for (auto shape_idx=0; shape_idx<collection->Length(); shape_idx++) {
                 size_t shape_id = collection->Get(shape_idx);
 
@@ -53,16 +59,25 @@ void RunPipeline(Document* input_doc, Document* output_doc) {
         bin_offset += bin->size;
     }
 
-    // TODO: make sure we free all of the old paths first
-    // Right now we can't because there's quite a bit duplicated geometry
-    // output_doc->paths = new_paths;
-
     allocator.FreeAllocator();
+
+    auto e3 = std::chrono::high_resolution_clock::now();
+    auto el1 = std::chrono::duration_cast<std::chrono::nanoseconds>(e1 - begin);
+    auto el2 = std::chrono::duration_cast<std::chrono::nanoseconds>(e2 - begin);
+    auto el3 = std::chrono::duration_cast<std::chrono::nanoseconds>(e3 - begin);
+    printf("Pipeline ran in %.3f seconds.\n", el1.count() * 1e-9);
+    printf("Pipeline ran in %.3f seconds.\n", el2.count() * 1e-9);
+    printf("Pipeline ran in %.3f seconds.\n", el3.count() * 1e-9);
+
     printf("Ran Pipeline :)\n\n\n");
+
 }
 
-DynamicArrayEx<RectNamed, LinearAllocatorPool> GetCollectionBounds(Document *doc, LinearAllocatorPool *allocator) {
-    auto rects = DynamicArrayEx<RectNamed, LinearAllocatorPool>(doc->reverse_collections_index.map.size, allocator);
+CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocator) {
+    CollectionBounds bounds = {
+        DynamicArrayEx<RectNamed, LinearAllocatorPool>(doc->reverse_collections_index.map.size, allocator),
+        HashMapEx<size_t, Rect, LinearAllocatorPool>(doc->reverse_collections_index.map.size, allocator),
+    };
 
     for (auto i=0; i<doc->reverse_collections_index.Capacity(); i++) {
         auto slot = doc->reverse_collections_index.Slot(i);
@@ -90,11 +105,12 @@ DynamicArrayEx<RectNamed, LinearAllocatorPool> GetCollectionBounds(Document *doc
             Vec2 size = Vec2(width, height);
             Vec2 pos  = Vec2(collection_bound.left, collection_bound.top);
 
-            rects.Push(RectNamed(Rect(pos, size), collection->key), allocator);
+            bounds.array.Push(RectNamed(Rect(pos, size), collection->key), allocator);
+            bounds.map.Set(collection->key, Rect(pos, size), allocator);
         }
     }
 
-    return rects;
+    return bounds;
 }
 
 Rect FindCollectionBound(size_t needle, DynamicArrayEx<RectNamed, LinearAllocatorPool> *haystack) {

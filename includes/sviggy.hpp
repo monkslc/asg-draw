@@ -66,11 +66,14 @@ class Rect {
     public:
     Vec2 pos, size;
     Rect(Vec2 pos, Vec2 size);
+    Rect(D2D1_RECT_F* rect);
 
     float Left();
     float Top();
     float Right();
     float Bottom();
+
+    bool Contains(Rect *other);
 };
 
 class RectNamed {
@@ -78,7 +81,32 @@ class RectNamed {
     Rect rect;
     size_t id;
     RectNamed(Rect rect, size_t id);
+
+    float Left();
+    float Top();
+    float Right();
+    float Bottom();
 };
+
+// Sorts the rect by its position in the x direction and then the y direction.
+// If two rects are in the same position then the larger rect will end up first.
+// This ensures that a rect containing another one will appear first
+template <typename T>
+bool SortRectPositionXY(T& a, T& b) {
+    if (a.Left() != b.Left()) {
+        return a.Left() < b.Left();
+    }
+
+    if (a.Top() != b.Top()) {
+        return a.Top() < b.Top();
+    }
+
+    if (a.Right() != b.Right()) {
+        return a.Right() > b.Right();
+    }
+
+    return a.Bottom() > b.Bottom();
+}
 
 class Transformation {
     public:
@@ -242,6 +270,8 @@ class Document {
     void CollectActiveShapes();
     void SetCollection(size_t shape_id, size_t collection_id);
     void AddTag(size_t shape_id, char* c_str);
+
+    void AutoCollect();
 };
 
 class Application {
@@ -326,5 +356,6 @@ void ExitOnFailure(HRESULT hr);
 void Union(D2D1_RECT_F *a, D2D1_RECT_F *b);
 Vec2 GeometryCenter(ID2D1Geometry* geometry);
 Transformation GetTranslationTo(Vec2 to, D2D1_RECT_F* bound);
+Rect GetBounds(ID2D1TransformedGeometry* geo);
 
 #endif

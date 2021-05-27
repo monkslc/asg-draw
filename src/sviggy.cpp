@@ -262,6 +262,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         app.ActiveDoc()->TogglePipelineView();
                         break;
 
+                    case 'Q':
+                        app.ActiveDoc()->AutoCollect();
+                        break;
+
                     default:
                         if (wParam >= '0' && wParam <= '9') {
                             app.ActivateDoc(wParam - '0');

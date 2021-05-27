@@ -231,6 +231,60 @@ void Path::RealizeGeometry(DXState* dx) {
 
 Shape::Shape(ID2D1TransformedGeometry* geometry, Transformation transform) : geometry(geometry), transform(transform) {};
 
+Rect::Rect(Vec2 pos, Vec2 size) : pos(pos), size(size) {};
+
+Rect::Rect(D2D1_RECT_F* rect) :
+ pos(Vec2(rect->left, rect->top)),
+ size(Vec2(rect->right - rect->left, rect->bottom - rect->top)) {};
+
+float Rect::Left() {
+    return this->pos.x;
+}
+
+float Rect::Top() {
+    return this->pos.y;
+}
+
+float Rect::Right() {
+    return this->pos.x + this->size.x;
+}
+
+float Rect::Bottom() {
+    return this->pos.y + this->size.y;
+}
+
+bool Rect::Contains(Rect *other) {
+    return this->Left()   <= other->Left()  &&
+           this->Top()    <= other->Top()   &&
+           this->Right()  >= other->Right() &&
+           this->Bottom() >= other->Bottom();
+}
+
+RectNamed::RectNamed(Rect rect, size_t id) : rect(rect), id(id) {};
+
+float RectNamed::Left() {
+    return this->rect.Left();
+}
+
+float RectNamed::Top() {
+    return this->rect.Top();
+}
+
+float RectNamed::Right() {
+    return this->rect.Right();
+}
+
+float RectNamed::Bottom() {
+    return this->rect.Bottom();
+}
+
+void Union(D2D1_RECT_F *a, D2D1_RECT_F *b) {
+    a->left   = std::min<float>(a->left,   b->left);
+    a->top    = std::min<float>(a->top,    b->top);
+    a->right  = std::max<float>(a->right,  b->right);
+    a->bottom = std::max<float>(a->bottom, b->bottom);
+}
+
 Vec2 GeometryCenter(ID2D1Geometry* geometry) {
    D2D1_RECT_F bound;
    HRESULT hr = geometry->GetBounds(NULL, &bound);
@@ -250,4 +304,12 @@ Transformation GetTranslationTo(Vec2 to, D2D1_RECT_F* bound) {
 
     transform.translation = diff;
     return transform;
+}
+
+Rect GetBounds(ID2D1TransformedGeometry* geo) {
+    D2D1_RECT_F d2bound;
+    HRESULT hr = geo->GetBounds(NULL, &d2bound);
+    ExitOnFailure(hr);
+
+    return Rect(&d2bound);
 }
