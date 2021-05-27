@@ -50,7 +50,8 @@ AvailableArea FindNextAvailableArea(
             Rect* possible_fit = bin_areas->GetPtr(area_id);
 
             if (possible_fit->size.Fits(size)) {
-                available_area.area = possible_fit;
+                available_area.area   = possible_fit;
+                available_area.bin_id = bin_id;
                 break;
             }
         }

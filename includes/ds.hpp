@@ -49,6 +49,10 @@ class LinearAllocator {
             size_t aligned_up = (this->used + alignment - 1) & ~(alignment - 1);
             size_t new_used = aligned_up + bytes;
 
+            if(aligned_up - this->used) {
+                printf("we lost %zu due to alignment\n", aligned_up - this->used);
+            }
+
             if (new_used > this->capacity) {
               return NULL;
             }
@@ -534,6 +538,7 @@ class HashMapEx {
             }
         }
 
+        this->size++;
         KeyValuePair<K, V> default_entry = KeyValuePair<K, V>(key, V());
         hash_slot->Push(default_entry, allocator);
         return &hash_slot->LastPtr()->value;
@@ -555,7 +560,12 @@ class HashMap {
     HashMapEx<K, V, LinearAllocatorPool> map;
     LinearAllocatorPool allocator;
 
-    HashMap(size_t capacity) : allocator(LinearAllocatorPool(sizeof(DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>) * capacity * kDefaultSlotSize)) {
+    HashMap(size_t capacity) : allocator(LinearAllocatorPool(
+            ((sizeof(DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>) * capacity) +
+            (sizeof(KeyValuePair<K, V>) * kDefaultSlotSize * capacity))
+        )) {
+        size_t da_size = sizeof(DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>);
+        size_t kv_size = sizeof(KeyValuePair<K, V>);
         this->map = HashMapEx<K, V, LinearAllocatorPool>(capacity, &this->allocator);
     };
 

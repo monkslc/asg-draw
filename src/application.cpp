@@ -54,7 +54,9 @@ Document::Document(size_t estimated_shapes) :
 
     transformations(HashMap<size_t, Transformation>(estimated_shapes)),
     texts(DynamicArray<Text>(10)),
-    active_shapes(DynamicArray<ActiveShape>(5)) {};
+    active_shapes(DynamicArray<ActiveShape>(5)),
+
+    pipeline_shapes(DynamicArray<Shape>(estimated_shapes)) {};
 
 void Document::Free() {
     this->texts.FreeAll();
@@ -104,24 +106,22 @@ void Document::AddNewPath(Path p) {
     size_t next_collection = this->NextCollection();
     size_t next_id = this->NextId();
 
-    this->geometries.Set(this->next_id, p.geometry);
+    this->geometries.Set(next_id, p.geometry);
 
     size_t lf_array_index = this->low_fidelities.Length();
     this->low_fidelities.Push(p.low_fidelity);
-    this->low_fidelities_index.Set(this->next_id, lf_array_index);
+    this->low_fidelities_index.Set(next_id, lf_array_index);
 
     size_t tg_array_index = this->transformed_geometries.Length();
-    this->reverse_transformed_geometries_index.Set(tg_array_index, this->next_id);
-    this->transformed_geometries_index.Set(this->next_id, tg_array_index);
+    this->reverse_transformed_geometries_index.Set(tg_array_index, next_id);
+    this->transformed_geometries_index.Set(next_id, tg_array_index);
     this->transformed_geometries.Push(p.transformed_geometry);
 
-    this->transformations.Set(this->next_id, p.transform);
+    this->transformations.Set(next_id, p.transform);
 
-    this->collections.Set(this->next_id, next_collection);
+    this->collections.Set(next_id, next_collection);
     DynamicArray<size_t>* collection = this->reverse_collections_index.GetPtrOrDefault(next_collection);
-    collection->Push(this->next_id);
-
-    this->next_id++;
+    collection->Push(next_id);
 }
 
 size_t Document::NextCollection() {
@@ -197,13 +197,18 @@ void Document::ScrollZoom(bool in) {
 }
 
 Vec2 Document::MousePos() {
-   return  this->view.MousePos();
+   return this->view.MousePos();
+}
+
+void Document::TogglePipelineView() {
+    this->view.show_pipeline = !this->view.show_pipeline;
 }
 
 D2D1_RECT_F Document::GeometryBound(size_t id) {
     D2D1_RECT_F bound;
 
-    ID2D1TransformedGeometry *geo = *this->transformed_geometries.GetPtr(id);
+    size_t index = *this->transformed_geometries_index.GetPtr(id);
+    ID2D1TransformedGeometry *geo = *this->transformed_geometries.GetPtr(index);
     geo->GetBounds(NULL, &bound);
 
     return bound;
@@ -254,8 +259,8 @@ void Document::SetCollection(size_t shape_id, size_t new_collection_id) {
     DynamicArray<size_t>* old_collection = this->reverse_collections_index.GetPtr(old_collection_id);
 
     if (old_collection->Length() == 1) {
-        this->reverse_collections_index.Remove(old_collection_id);
         old_collection->Free();
+        this->reverse_collections_index.Remove(old_collection_id);
     } else {
         old_collection->Remove(shape_id);
     }
@@ -274,7 +279,7 @@ void Document::AddTag(size_t shape_id, char* tag_cstr) {
     shape_ids->Push(shape_id);
 }
 
-View::View() : start(Vec2(0.0f, 0.0f)), mouse_pos_screen(Vec2(0.0f, 0.0f)) {};
+View::View() : start(Vec2(0.0f, 0.0f)), mouse_pos_screen(Vec2(0.0f, 0.0f)), show_pipeline(false) {};
 Vec2 View::GetDocumentPosition(Vec2 screen_pos) {
     return this->ScreenToDocumentMat().TransformPoint(screen_pos.D2Point());
 }

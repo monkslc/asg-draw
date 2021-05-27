@@ -292,8 +292,12 @@ HRESULT DXState::Render(Document *doc, UIState *ui) {
     int width = static_cast<int>(rtSize.width);
     int height = static_cast<int>(rtSize.height);
 
-    this->RenderPaths(doc);
-    this->RenderText(doc);
+    if (doc->view.show_pipeline) {
+        this->RenderPipeline(doc);
+    } else {
+        this->RenderPaths(doc);
+        this->RenderText(doc);
+    }
 
     hr = this->d2_device_context->EndDraw();
     if (hr == D2DERR_RECREATE_TARGET) {
@@ -342,6 +346,27 @@ void DXState::RenderText(Document *doc) {
         Text* text = doc->texts.GetPtr(i);
 
         this->d2_device_context->DrawTextLayout(text->pos.D2Point(), text->layout, this->blackBrush, D2D1_DRAW_TEXT_OPTIONS_NONE);
+    }
+}
+
+void DXState::RenderPipeline(Document *doc) {
+    for (auto i=0; i<doc->pipeline_shapes.Length(); i++) {
+        Shape shape = doc->pipeline_shapes.Get(i);
+        D2D1_RECT_F bound;
+        HRESULT hr = shape.geometry->GetBounds(NULL, &bound);
+        Vec2 center = Vec2((bound.left + bound.right) / 2, (bound.top + bound.bottom) / 2);
+
+        ID2D1Geometry* og;
+        ID2D1TransformedGeometry* geometry;
+        this->factory->CreateTransformedGeometry(
+            shape.geometry,
+            shape.transform.Matrix(center),
+            &geometry
+        );
+
+        this->d2_device_context->DrawGeometry(geometry, this->blackBrush, kHairline, NULL);
+
+        geometry->Release();
     }
 }
 

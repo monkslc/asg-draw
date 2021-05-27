@@ -5,7 +5,8 @@
 template <typename T>
 D2D1_RECT_F ShapeBound(T* shape) {
     D2D1_RECT_F bound;
-    shape->geometry->GetBounds(shape->TransformMatrix(), &bound);
+    HRESULT hr = shape->geometry->GetBounds(shape->TransformMatrix(), &bound);
+    ExitOnFailure(hr);
     return bound;
 }
 

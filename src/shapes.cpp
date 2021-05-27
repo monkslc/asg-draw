@@ -229,6 +229,8 @@ void Path::RealizeGeometry(DXState* dx) {
     ExitOnFailure(hr);
 }
 
+Shape::Shape(ID2D1TransformedGeometry* geometry, Transformation transform) : geometry(geometry), transform(transform) {};
+
 Vec2 GeometryCenter(ID2D1Geometry* geometry) {
    D2D1_RECT_F bound;
    HRESULT hr = geometry->GetBounds(NULL, &bound);
@@ -238,4 +240,14 @@ Vec2 GeometryCenter(ID2D1Geometry* geometry) {
    float y = (bound.top  + bound.bottom) / 2.0f;
 
    return Vec2(x, y);
+}
+
+Transformation GetTranslationTo(Vec2 to, D2D1_RECT_F* bound) {
+   Transformation transform = Transformation();
+
+   Vec2 current_pos = Vec2(bound->left, bound->top);
+   Vec2 diff        = to - current_pos;
+
+    transform.translation = diff;
+    return transform;
 }

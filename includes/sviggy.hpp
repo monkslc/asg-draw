@@ -170,6 +170,7 @@ class View {
     Vec2 start;
     Vec2 mouse_pos_screen;
     float scale = 1.0;
+    bool show_pipeline;
     View();
 
     Vec2 GetDocumentPosition(Vec2 screen_pos);
@@ -179,6 +180,13 @@ class View {
     D2D1::Matrix3x2F TranslationMatrix();
     D2D1::Matrix3x2F DocumentToScreenMat();
     D2D1::Matrix3x2F ScreenToDocumentMat();
+};
+
+class Shape {
+    public:
+    ID2D1TransformedGeometry* geometry;
+    Transformation transform;
+    Shape(ID2D1TransformedGeometry* geometry, Transformation transform);
 };
 
 // Forward declarion for the Document
@@ -206,6 +214,10 @@ class Document {
     HashMap<String, DynamicArray<size_t>> reverse_tags_index; // maps tags to shape ids with that tag
 
     DynamicArray<ActiveShape> active_shapes;
+
+    // Geometries in here don't have to get freed because they will be the same geometries from the document
+    DynamicArray<Shape> pipeline_shapes;
+
     View view;
     size_t next_id = 0;
     size_t next_collection = 0;
@@ -223,6 +235,7 @@ class Document {
     void TranslateView(Vec2 amount);
     void ScrollZoom(bool in);
     Vec2 MousePos();
+    void TogglePipelineView();
 
     D2D1_RECT_F GeometryBound(size_t id);
     void RealizeGeometry(DXState* dx, size_t id);
@@ -296,6 +309,7 @@ class DXState {
     void RenderPathsLowFidelity(Document *doc);
     void RenderPathsHighFidelity(Document *doc);
     void RenderText(Document *doc);
+    void RenderPipeline(Document *doc);
     void RenderGridLines();
     void RenderDemoWindow(UIState *ui);
     void RenderDebugWindow(UIState *ui, Document *doc);
@@ -311,5 +325,6 @@ void TeardownGui();
 void ExitOnFailure(HRESULT hr);
 void Union(D2D1_RECT_F *a, D2D1_RECT_F *b);
 Vec2 GeometryCenter(ID2D1Geometry* geometry);
+Transformation GetTranslationTo(Vec2 to, D2D1_RECT_F* bound);
 
 #endif

@@ -258,6 +258,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         RunPipeline(app.ActiveDoc(), app.documents.GetPtr(1));
                         break;
 
+                    case 'V':
+                        app.ActiveDoc()->TogglePipelineView();
+                        break;
+
                     default:
                         if (wParam >= '0' && wParam <= '9') {
                             app.ActivateDoc(wParam - '0');
