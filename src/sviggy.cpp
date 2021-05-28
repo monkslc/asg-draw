@@ -256,13 +256,15 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                             app.documents.Push(Document(100));
                         }
 
+                        Pipeline p;
+
                         size_t memory_estimation = app.ActiveDoc()->transformed_geometries.Length() * 100;
                         LinearAllocatorPool allocator = LinearAllocatorPool(memory_estimation);
 
                         auto bins = DynamicArrayEx<Vec2Many, LinearAllocatorPool>(1, &allocator);
                         bins.Push(Vec2Many(Vec2(48, 24), kInfinity), &allocator);
+                        p.bins = bins;
 
-                        Pipeline p = Pipeline(bins);
                         p.Run(app.ActiveDoc(), &allocator);
 
                         allocator.FreeAllocator();

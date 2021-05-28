@@ -3,7 +3,7 @@
 class Pipeline {
     public:
     DynamicArrayEx<Vec2Many, LinearAllocatorPool> bins;
-    Pipeline(DynamicArrayEx<Vec2Many, LinearAllocatorPool> bins) : bins(bins) {};
+    Pipeline() {};
 
     void Run(Document* input_doc, LinearAllocatorPool* allocator);
 };

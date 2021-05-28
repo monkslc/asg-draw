@@ -94,6 +94,8 @@ class DynamicArrayEx {
         this->data = allocator->template Alloc<T>(this->capacity);
     }
 
+    DynamicArrayEx() : length(0), capacity(0), data(NULL) {};
+
     void IncreaseCapacity(size_t new_capacity, A *allocator) {
         this->data = (T*) allocator->template Realloc<T>(this->data, this->capacity, new_capacity);
         this->capacity = new_capacity;
