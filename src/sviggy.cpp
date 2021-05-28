@@ -251,12 +251,23 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         ui.show_command_prompt = !ui.show_command_prompt;
                         break;
 
-                    case 'P':
+                    case 'P': {
                         if (app.documents.Length() < 2) {
                             app.documents.Push(Document(100));
                         }
-                        RunPipeline(app.ActiveDoc(), app.documents.GetPtr(1));
+
+                        size_t memory_estimation = app.ActiveDoc()->transformed_geometries.Length() * 100;
+                        LinearAllocatorPool allocator = LinearAllocatorPool(memory_estimation);
+
+                        auto bins = DynamicArrayEx<Vec2Many, LinearAllocatorPool>(1, &allocator);
+                        bins.Push(Vec2Many(Vec2(48, 24), kInfinity), &allocator);
+
+                        Pipeline p = Pipeline(bins);
+                        p.Run(app.ActiveDoc(), &allocator);
+
+                        allocator.FreeAllocator();
                         break;
+                    }
 
                     case 'V':
                         app.ActiveDoc()->TogglePipelineView();

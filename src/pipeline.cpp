@@ -6,21 +6,14 @@
 
 #include <chrono>
 
-void RunPipeline(Document* input_doc, Document* output_doc) {
+void Pipeline::Run(Document* input_doc, LinearAllocatorPool* allocator) {
     auto begin = std::chrono::high_resolution_clock::now();
 
-    size_t memory_estimation = input_doc->transformed_geometries.Length() * 100;
-    LinearAllocatorPool allocator = LinearAllocatorPool(memory_estimation);
-
-    // Bins will eventually come as input
-    auto bins = DynamicArrayEx<Vec2Many, LinearAllocatorPool>(1, &allocator);
-    bins.Push(Vec2Many(Vec2(48, 24), kInfinity), &allocator);
-
-    auto collection_bounds = GetCollectionBounds(input_doc, &allocator);
+    auto collection_bounds = GetCollectionBounds(input_doc, allocator);
 
     auto e1 = std::chrono::high_resolution_clock::now();
 
-    DynamicArrayEx<Bin, LinearAllocatorPool> packed_bins = PackBins(&bins, &collection_bounds.array, &allocator);
+    DynamicArrayEx<Bin, LinearAllocatorPool> packed_bins = PackBins(&this->bins, &collection_bounds.array, allocator);
 
     auto e2 = std::chrono::high_resolution_clock::now();
 
@@ -59,8 +52,6 @@ void RunPipeline(Document* input_doc, Document* output_doc) {
         bin_offset += bin->size;
     }
 
-    allocator.FreeAllocator();
-
     auto e3 = std::chrono::high_resolution_clock::now();
     auto el1 = std::chrono::duration_cast<std::chrono::nanoseconds>(e1 - begin);
     auto el2 = std::chrono::duration_cast<std::chrono::nanoseconds>(e2 - begin);
@@ -70,7 +61,6 @@ void RunPipeline(Document* input_doc, Document* output_doc) {
     printf("Pipeline ran in %.3f seconds.\n", el3.count() * 1e-9);
 
     printf("Ran Pipeline :)\n\n\n");
-
 }
 
 CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocator) {
@@ -111,16 +101,4 @@ CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocat
     }
 
     return bounds;
-}
-
-Rect FindCollectionBound(size_t needle, DynamicArrayEx<RectNamed, LinearAllocatorPool> *haystack) {
-    for (auto i=0; i<haystack->Length(); i++) {
-        RectNamed* potential = haystack->GetPtr(i);
-        if (potential->id == needle) {
-            return potential->rect;
-        }
-    }
-
-    // TODO: We shouldn't get to this point but if we do we should probably assert(false);
-    return Rect(Vec2(0.0f, 0.0f), Vec2(0.0f, 0.0f));
 }

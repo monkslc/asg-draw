@@ -1,6 +1,12 @@
 #include "sviggy.hpp"
 
-void RunPipeline(Document *input_doc, Document *output_doc);
+class Pipeline {
+    public:
+    DynamicArrayEx<Vec2Many, LinearAllocatorPool> bins;
+    Pipeline(DynamicArrayEx<Vec2Many, LinearAllocatorPool> bins) : bins(bins) {};
+
+    void Run(Document* input_doc, LinearAllocatorPool* allocator);
+};
 
 struct CollectionBounds {
     DynamicArrayEx<RectNamed, LinearAllocatorPool> array;
@@ -10,5 +16,3 @@ CollectionBounds GetCollectionBounds(
     Document *doc,
     LinearAllocatorPool *allocator
 );
-
-Rect FindCollectionBound(size_t needle, DynamicArrayEx<RectNamed, LinearAllocatorPool> *haystack);
