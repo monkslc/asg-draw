@@ -261,9 +261,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         size_t memory_estimation = app.ActiveDoc()->transformed_geometries.Length() * 100;
                         LinearAllocatorPool allocator = LinearAllocatorPool(memory_estimation);
 
-                        auto bins = DynamicArrayEx<Vec2Many, LinearAllocatorPool>(1, &allocator);
-                        bins.Push(Vec2Many(Vec2(48, 24), kInfinity), &allocator);
-                        p.bins = bins;
+                        p.bins.Push(Vec2Many(Vec2(48, 24), kInfinity), &allocator);
+
+                        p.tags.Push(StringEx<LinearAllocatorPool>((char*)"Bound", &allocator), &allocator);
 
                         p.Run(app.ActiveDoc(), &allocator);
 

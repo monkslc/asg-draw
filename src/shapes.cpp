@@ -34,7 +34,7 @@ Text::Text(Vec2 pos, String text, DXState* dx) : pos(pos), text(text), transform
     this->format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
     this->format->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
 
-    std::wstring wide_string = std::wstring(text.chars.Data(), text.chars.End());
+    std::wstring wide_string = std::wstring(text.Data(), text.End());
     dx->write_factory->CreateTextLayout(
         wide_string.c_str(),
         wide_string.size(),

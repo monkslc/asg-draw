@@ -357,44 +357,94 @@ class LinearAllocatorPool {
     }
 };
 
-// TODO: we probably need a StringEx class
-class String {
+template<typename A>
+class StringEx {
     public:
-    DynamicArray<char> chars;
-    String() : chars(DynamicArray<char>(10)) {};
-    String(char *c_str) : chars(DynamicArray<char>(10)) {
+    DynamicArrayEx<char, A> chars;
+    StringEx(A* allocator) : chars(DynamicArrayEx<char, A>(10, allocator)) {};
+    StringEx(char *c_str, A* allocator) : chars(DynamicArrayEx<char, A>(10, allocator)) {
         char *iter = c_str;
         while (*iter) {
-            this->chars.Push(*iter);
+            this->chars.Push(*iter, allocator);
             iter++;
         }
     };
 
+    char* Data() {
+        return this->chars.Data();
+    }
+
+    char* End() {
+        return this->chars.End();
+    }
+
     // CStr places a null pointer past the end of the array but doesn't increase the size of the
     // underlying array. So if an element is pushed to the array after getting a pointer to the c
     // string, it will overwrite the null pointer
-    char* CStr() {
+    char* CStr(A* allocator) {
         if (this->chars.Length() >= this->chars.Capacity()) {
-            this->chars.IncreaseCapacity(this->chars.Capacity() + 1);
+            this->chars.IncreaseCapacity(this->chars.Capacity() + 1, allocator);
         }
 
         this->chars.Put(NULL, this->chars.Length());
         return this->chars.Data();
     }
 
-    void Free() {
-        this->chars.Free();
+    void Free(A* allocator) {
+        this->chars.Free(allocator);
     }
 
-    bool operator==(String& rhs) {
+    bool operator==(StringEx& rhs) {
         return this->chars == rhs.chars;
     }
 };
 
+class String {
+    public:
+    StringEx<SysAllocator> strex;
+    String() : strex(StringEx<SysAllocator>(&global_allocator)) {};
+    String(char *c_str) : strex(StringEx<SysAllocator>(c_str, &global_allocator)) {};
+
+    char* Data() {
+        return this->strex.Data();
+    }
+
+    char* End() {
+        return this->strex.End();
+    }
+
+    char* CStr() {
+        return this->strex.CStr(&global_allocator);
+    }
+
+    void Free() {
+        return this->strex.Free(&global_allocator);
+    }
+
+    bool operator==(String& rhs) {
+        return this->strex== rhs.strex;
+    }
+};
+
 namespace std {
+  template <typename A> struct hash<StringEx<A>> {
+    // stolen from: http://www.cse.yorku.ca/~oz/hash.html
+    size_t operator()(StringEx<A> &s) {
+        unsigned long hash = 5381;
+        int c;
+
+        for (auto i=0; i<s.chars.Length(); i++) {
+            c = s.chars.Get(i);
+            hash = ((hash << 5) + hash) + c;
+        }
+
+        return hash;
+    }
+  };
+
   template <> struct hash<String> {
-    size_t operator()(String &x) {
-        return hash<char*>()(x.CStr());
+    size_t operator()(String &s) {
+        return std::hash<StringEx<SysAllocator>>()(s.strex);
     }
   };
 }
