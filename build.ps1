@@ -1,4 +1,4 @@
-clang --debug -D DEBUG -I ./includes -I external -o sviggy.exe `
+clang --debug -D DEBUG -DNOMINMAX -I ./includes -I external -o sviggy.exe `
     src/sviggy.cpp `
     src/svg.cpp `
     src/dx_state.cpp `

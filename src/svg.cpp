@@ -25,6 +25,7 @@ void LoadSVGFile(char *file, Document *doc, DXState *dx) {
     pugi::xml_object_range<pugi::xml_node_iterator> nodes = svg_tree.children();
 
     AddNodesToDocument(&viewport, nodes, doc, dx);
+    doc->paths.RealizeAllGeometry(dx);
 }
 
 // TODO: just let this accept a node and go through its children
@@ -69,13 +70,13 @@ void AddNodesToDocument(ViewPort *viewport, pugi::xml_object_range<pugi::xml_nod
     }
 }
 
-Path ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
+ShapeData ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
     float x = RoundFloatingInput(node->attribute("x"     ).as_float() / viewport->uupix);
     float y = RoundFloatingInput(node->attribute("y"     ).as_float() / viewport->uupiy);
     float w = RoundFloatingInput(node->attribute("width" ).as_float() / viewport->uupix);
     float h = RoundFloatingInput(node->attribute("height").as_float() / viewport->uupiy);
 
-    return Path::CreateRect(Vec2(x, y), Vec2(w, h), dx);
+    return PathBuilder::CreateRect(Vec2(x, y), Vec2(w, h), dx);
 }
 
 Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
@@ -85,16 +86,16 @@ Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx)
     return Text(Vec2(x, y), String((char *)node->text().get()), dx);
 }
 
-Path ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
+ShapeData ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
     float x1 = RoundFloatingInput(node->attribute("x1").as_float() / viewport->uupix);
     float y1 = RoundFloatingInput(node->attribute("y1").as_float() / viewport->uupiy);
     float x2 = RoundFloatingInput(node->attribute("x2").as_float() / viewport->uupix);
     float y2 = RoundFloatingInput(node->attribute("y2").as_float() / viewport->uupiy);
 
-    return Path::CreateLine(Vec2(x1, y1), Vec2(x2, y2), dx);
+    return PathBuilder::CreateLine(Vec2(x1, y1), Vec2(x2, y2), dx);
 }
 
-Path ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
+ShapeData ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
     PathBuilder builder = PathBuilder(dx);
     char *iter = (char *)node->attribute("points").value();
 
@@ -110,10 +111,10 @@ Path ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, DXState *
     }
 
     builder.Close();
-    return builder.Build(dx);
+    return builder.BuildPath(dx);
 }
 
-Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
+ShapeData ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
     PathBuilder builder = PathBuilder(dx);
 
     char *path = (char *) node->attribute("d").value();
@@ -161,15 +162,15 @@ Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx)
 
     }
 
-    return builder.Build(dx);
+    return builder.BuildPath(dx);
 }
 
-Path ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
+ShapeData ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx) {
     float x = RoundFloatingInput(node->attribute("cx").as_float() / viewport->uupix);
     float y = RoundFloatingInput(node->attribute("cy").as_float() / viewport->uupiy);
     float r = RoundFloatingInput(node->attribute("r" ).as_float() / viewport->uupix);
 
-    return Path::CreateCircle(Vec2(x, y), r, dx);
+    return PathBuilder::CreateCircle(Vec2(x, y), r, dx);
 }
 
 bool IsFloatingPointChar(char c) {

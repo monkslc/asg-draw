@@ -40,23 +40,12 @@ void Application::ActivateDoc(size_t index) {
 }
 
 Document::Document(size_t estimated_shapes) :
-    geometries(HashMap<size_t, ID2D1PathGeometry*>(estimated_shapes)),
+    paths(Paths(estimated_shapes)),
+    collections(Collections(estimated_shapes)),
+    tags(Tags(estimated_shapes)),
 
-    transformed_geometries_index(HashMap<size_t, size_t>(estimated_shapes)),
-    reverse_transformed_geometries_index(HashMap<size_t, size_t>(estimated_shapes)),
-    transformed_geometries(DynamicArray<ID2D1TransformedGeometry*>(estimated_shapes)),
-
-    reverse_collections_index(HashMap<size_t, DynamicArray<size_t>>(estimated_shapes)),
-    collections(HashMap<size_t, size_t>(estimated_shapes)),
-
-    tags_index(HashMap<size_t, DynamicArray<String>>(estimated_shapes)),
-    reverse_tags_index(HashMap<String, DynamicArray<size_t>>(estimated_shapes)),
-
-    low_fidelities(DynamicArray<ID2D1GeometryRealization*>(estimated_shapes)),
-    low_fidelities_index(HashMap<size_t, size_t>(estimated_shapes)),
-
-    transformations(HashMap<size_t, Transformation>(estimated_shapes)),
     texts(DynamicArray<Text>(10)),
+
     active_shapes(DynamicArray<ActiveShape>(5)),
 
     pipeline_shapes(DynamicArray<Shape>(estimated_shapes)) {};
@@ -64,87 +53,19 @@ Document::Document(size_t estimated_shapes) :
 void Document::Free() {
     this->texts.FreeAll();
 
-    // Geometry and transformations
-    for (auto i=0; i<this->geometries.Capacity(); i++) {
-        auto slot = this->geometries.Slot(i);
-        for (auto j=0; j<slot->Length(); j++) {
-            auto entry = slot->GetPtr(j);
-            entry->value->Release();
-        }
-    }
-    this->geometries.Free();
-    this->transformations.Free();
-
-    // Transformed geometries
-    for (auto i=0; i<this->transformed_geometries.Length(); i++) {
-        this->transformed_geometries.Get(i)->Release();
-    }
-    this->transformed_geometries.Free();
-    this->transformed_geometries_index.Free();
-    this->reverse_transformed_geometries_index.Free();
-
-    // Low fidelities
-    for (auto i=0; i<this->low_fidelities.Length(); i++) {
-        this->low_fidelities.Get(i)->Release();
-    }
-    this->low_fidelities.Free();
-    this->low_fidelities_index.Free();
-
-    // Collections
+    this->paths.Free();
     this->collections.Free();
-    this->reverse_collections_index.FreeValues();
-    this->reverse_collections_index.Free();
+    this->tags.Free();
 
-    // Tags
-    // Tags index Strings don't have to be freed because they will be freed in reverse_tags_index
-    this->tags_index.FreeValues();
-    this->tags_index.Free();
-    this->reverse_tags_index.FreeKeyValues();
-    this->reverse_tags_index.Free();
+    this->pipeline_shapes.Free();
 
     this->active_shapes.Free();
 }
 
-void Document::AddNewPath(Path p) {
-    size_t next_collection = this->NextCollection();
-    size_t next_id = this->NextId();
+void Document::AddNewPath(ShapeData p) {
+    PathId id = this->paths.AddPath(p);
 
-    this->geometries.Set(next_id, p.geometry);
-
-    size_t lf_array_index = this->low_fidelities.Length();
-    this->low_fidelities.Push(p.low_fidelity);
-    this->low_fidelities_index.Set(next_id, lf_array_index);
-
-    size_t tg_array_index = this->transformed_geometries.Length();
-    this->reverse_transformed_geometries_index.Set(tg_array_index, next_id);
-    this->transformed_geometries_index.Set(next_id, tg_array_index);
-    this->transformed_geometries.Push(p.transformed_geometry);
-
-    this->transformations.Set(next_id, p.transform);
-
-    this->collections.Set(next_id, next_collection);
-    DynamicArray<size_t>* collection = this->reverse_collections_index.GetPtrOrDefault(next_collection);
-    collection->Push(next_id);
-}
-
-size_t Document::NextCollection() {
-    size_t next = this->next_collection;
-    this->next_collection++;
-    return next;
-}
-
-size_t Document::NextId() {
-    size_t next = this->next_id;
-    this->next_id++;
-    return next;
-}
-
-bool EntirelyContains(D2D1_RECT_F* outer, D2D1_RECT_F* inner) {
-    return
-        outer->left   <= inner->left  &&
-        outer->top    <= inner->top   &&
-        outer->right  >= inner->right &&
-        outer->bottom >= inner->bottom;
+    this->collections.CreateCollectionForShape(id);
 }
 
 void Document::SelectShapes(Vec2 mousedown, Vec2 mouseup) {
@@ -158,16 +79,15 @@ void Document::SelectShapes(Vec2 mousedown, Vec2 mouseup) {
     Vec2 start = Vec2(minx, miny);
     Vec2 end   = Vec2(maxx, maxy);
 
-    D2D1_RECT_F selection = D2D1::RectF(start.x, start.y, end.x, end.y);
+    Vec2 size = end - start;
 
-    for (auto i=0; i<this->transformed_geometries.Length(); i++) {
-        ID2D1TransformedGeometry* geo = this->transformed_geometries.Get(i);
-        D2D1_RECT_F bound;
-        HRESULT hr = geo->GetBounds(NULL, &bound);
-        ExitOnFailure(hr);
-        if (EntirelyContains(&selection, &bound)) {
-            size_t shape_id = *this->reverse_transformed_geometries_index.GetPtr(i);
-            this->active_shapes.Push(ActiveShape(shape_id));
+    Rect selection = Rect(start, size);
+
+    for (auto i=0; i<this->paths.Length(); i++) {
+        Rect shape_bound = GetBounds(this->paths.transformed_geometries.Get(i));
+        if (selection.Contains(&shape_bound)) {
+            PathId path_id = this->paths.reverse_index.Get(i);
+            this->active_shapes.Push(ActiveShape(path_id));
         }
     }
 }
@@ -179,14 +99,16 @@ void Document::SelectShape(Vec2 screen_pos) {
 
     D2D1::Matrix3x2F doc_to_screen = this->view.DocumentToScreenMat();
 
-    for (auto i=0; i<this->transformed_geometries.Length(); i++) {
-        ID2D1TransformedGeometry* geo = this->transformed_geometries.Get(i);
+    for (auto i=0; i<this->paths.Length(); i++) {
+        ID2D1TransformedGeometry* geo = this->paths.transformed_geometries.Get(i);
         BOOL contains_point;
+
         HRESULT hr = geo->StrokeContainsPoint(point, kHairline, NULL, &doc_to_screen, &contains_point);
         ExitOnFailure(hr);
+
         if (contains_point) {
-            size_t shape_id = *this->reverse_transformed_geometries_index.GetPtr(i);
-            this->active_shapes.Push(ActiveShape(shape_id));
+            size_t path_id = this->paths.reverse_index.Get(i);
+            this->active_shapes.Push(ActiveShape(path_id));
         }
     }
 }
@@ -207,91 +129,24 @@ void Document::TogglePipelineView() {
     this->view.show_pipeline = !this->view.show_pipeline;
 }
 
-D2D1_RECT_F Document::GeometryBound(size_t id) {
-    D2D1_RECT_F bound;
-
-    size_t index = *this->transformed_geometries_index.GetPtr(id);
-    ID2D1TransformedGeometry *geo = *this->transformed_geometries.GetPtr(index);
-    geo->GetBounds(NULL, &bound);
-
-    return bound;
-}
-
-constexpr float kFloatLowFidelity = 1.0f;
-void Document::RealizeGeometry(DXState *dx, size_t id) {
-    HRESULT hr;
-
-    float dpix, dpiy;
-    dx->d2_device_context->GetDpi(&dpix, &dpiy);
-
-    ID2D1TransformedGeometry** transformed_geometry = this->transformed_geometries.GetPtr(id);
-
-    ID2D1Geometry* source_geometry;
-    (*transformed_geometry)->GetSourceGeometry(&source_geometry);
-
-    Transformation* transform = this->transformations.GetPtr(id);
-    hr = dx->factory->CreateTransformedGeometry(
-        source_geometry,
-        transform->Matrix(GeometryCenter(source_geometry)),
-        transformed_geometry
-    );
-
-    source_geometry->Release();
-
-    size_t low_fidelity_index = *this->low_fidelities_index.GetPtr(id);
-    ID2D1GeometryRealization** realization = this->low_fidelities.GetPtr(low_fidelity_index);
-
-    hr = dx->d2_device_context->CreateStrokedGeometryRealization(*transformed_geometry, kFloatLowFidelity, kHairline, NULL, realization);
-}
-
 void Document::CollectActiveShapes() {
-    size_t collection = this->NextCollection();
+    size_t collection = this->collections.NextId();
     for (auto i=0; i<this->active_shapes.Length(); i++) {
         ActiveShape shape = this->active_shapes.Get(i);
-        this->SetCollection(shape.id, collection);
+        this->collections.SetCollection(shape.id, collection);
     }
-}
-
-void Document::SetCollection(size_t shape_id, size_t new_collection_id) {
-    size_t old_collection_id = *this->collections.GetPtr(shape_id);
-    this->collections.Set(shape_id, new_collection_id);
-
-    DynamicArray<size_t>* new_collection = this->reverse_collections_index.GetPtrOrDefault(new_collection_id);
-    new_collection->Push(shape_id);
-
-    DynamicArray<size_t>* old_collection = this->reverse_collections_index.GetPtr(old_collection_id);
-
-    if (old_collection->Length() == 1) {
-        old_collection->Free();
-        this->reverse_collections_index.Remove(old_collection_id);
-    } else {
-        old_collection->Remove(shape_id);
-    }
-}
-
-void Document::AddTag(size_t shape_id, char* tag_cstr) {
-    // Currently AddTag creates one allocation for both tag indexes and places a spearate string in each
-    // which means only one of them should get freed If this becomes a problem tags can be abstracted out
-    // into their own array and referred to using indexes
-    String tag = String(tag_cstr);
-
-    DynamicArray<String>* tags = this->tags_index.GetPtrOrDefault(shape_id);
-    tags->Push(tag);
-
-    DynamicArray<size_t>* shape_ids = this->reverse_tags_index.GetPtrOrDefault(tag);
-    shape_ids->Push(shape_id);
 }
 
 void Document::AutoCollect() {
     auto begin = std::chrono::high_resolution_clock::now();
 
-    size_t memory_estimation = this->transformed_geometries.Length() * 2 * sizeof(RectNamed);
+    size_t memory_estimation = this->paths.Length() * 2 * sizeof(RectNamed);
     LinearAllocatorPool allocator = LinearAllocatorPool(memory_estimation);
 
-    auto shape_bounds = DynamicArrayEx<RectNamed, LinearAllocatorPool>(this->transformed_geometries.Length(), &allocator);
-    for (auto i=0; i<this->transformed_geometries.Length(); i++) {
-        ID2D1TransformedGeometry* geo = this->transformed_geometries.Get(i);
-        size_t shape_id               = *this->reverse_transformed_geometries_index.GetPtr(i);
+    auto shape_bounds = DynamicArrayEx<RectNamed, LinearAllocatorPool>(this->paths.Length(), &allocator);
+    for (auto i=0; i<this->paths.Length(); i++) {
+        size_t shape_id               = this->paths.reverse_index.Get(i);
+        ID2D1TransformedGeometry* geo = this->paths.transformed_geometries.Get(i);
 
         Rect bounds = GetBounds(geo);
         shape_bounds.Push(RectNamed(bounds, shape_id), &allocator);
@@ -299,7 +154,7 @@ void Document::AutoCollect() {
 
     std::sort(shape_bounds.Data(), shape_bounds.End(), SortRectPositionXY<RectNamed>);
 
-    auto new_collections = DynamicArrayEx<RectNamed, LinearAllocatorPool>(this->transformed_geometries.Length(), &allocator);
+    auto new_collections = DynamicArrayEx<RectNamed, LinearAllocatorPool>(this->paths.Length(), &allocator);
     auto search_from = 0;
     for (auto i=0; i<shape_bounds.Length(); i++) {
         RectNamed *shape = shape_bounds.GetPtr(i);
@@ -308,7 +163,7 @@ void Document::AutoCollect() {
         for (auto j=search_from; j<new_collections.Length(); j++) {
             RectNamed* collection = new_collections.GetPtr(j);
             if (collection->rect.Contains(&shape->rect)) {
-                this->SetCollection(shape->id, collection->id);
+                this->collections.SetCollection(shape->id, collection->id);
                 found_fit = true;
                 break;
             }
@@ -321,8 +176,8 @@ void Document::AutoCollect() {
         }
 
         if (!found_fit) {
-            size_t next_collection = this->NextCollection();
-            this->SetCollection(shape->id, next_collection);
+            size_t next_collection = this->collections.NextId();
+            this->collections.SetCollection(shape->id, next_collection);
             new_collections.Push(RectNamed(shape->rect, next_collection), &allocator);
         }
     }

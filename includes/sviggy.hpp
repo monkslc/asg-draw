@@ -35,6 +35,9 @@ class Vec2 {
     Vec2(float x, float y);
     Vec2(D2D1_POINT_2F p);
 
+    static Vec2 Min();
+    static Vec2 Max();
+
     D2D1_POINT_2F D2Point();
     D2D1_SIZE_F Size();
     bool Fits(Vec2 other);
@@ -73,7 +76,13 @@ class Rect {
     float Right();
     float Bottom();
 
+    float Width();
+    float Height();
+
     bool Contains(Rect *other);
+
+    Rect Union(Rect* other);
+    D2D1_RECT_F D2Rect();
 };
 
 class RectNamed {
@@ -140,30 +149,16 @@ constexpr float kPathCommandArc    = (float) 'A';
 constexpr float kClockwise = 1.0f;
 constexpr float kCounterClockwise = 0.0f;
 
-class Path {
+typedef size_t PathId;
+typedef size_t CollectionId;
+
+class ShapeData {
     public:
-    Transformation            transform;
-    ID2D1PathGeometry*        geometry;
-    ID2D1GeometryRealization* low_fidelity;
-    ID2D1TransformedGeometry* transformed_geometry;
-    size_t                    collection;
-    DynamicArray<String>      tags;
-    Path(ID2D1PathGeometry *geometry, DXState *dx);
+    Transformation transform;
+    ID2D1Geometry* geometry;
+    ShapeData(ID2D1Geometry* geometry);
 
-    void Free();
-
-    static Path CreateLine(Vec2 from, Vec2 to, DXState *dx);
-    static Path CreateRect(Vec2 pos, Vec2 size, DXState *dx);
-    static Path CreateCircle(Vec2 center, float radius, DXState *dx);
-
-    D2D1_RECT_F Bound();
-    D2D1_RECT_F OriginalBound();
-    Vec2 Center();
-    Vec2 OriginalCenter();
-    D2D1::Matrix3x2F TransformMatrix();
-
-    void SetPos(Vec2 to);
-    void RealizeGeometry(DXState* dx);
+    D2D1_MATRIX_3X2_F TransformMatrix();
 };
 
 class PathBuilder {
@@ -173,12 +168,71 @@ class PathBuilder {
     bool has_open_figure;
     PathBuilder(DXState *dx);
 
+    static ShapeData CreateLine(Vec2 from, Vec2 to, DXState *dx);
+    static ShapeData CreateRect(Vec2 pos, Vec2 size, DXState *dx);
+    static ShapeData CreateCircle(Vec2 center, float radius, DXState *dx);
+
     void Move(Vec2 to);
     void Line(Vec2 to);
     void Cubic(Vec2 c1, Vec2 c2, Vec2 end);
     void Arc(Vec2 end, Vec2 size, float rot, D2D1_SWEEP_DIRECTION direction);
     void Close();
-    Path Build(DXState *dx);
+    ShapeData BuildPath(DXState *dx);
+};
+
+class Paths {
+    public:
+    DynamicArray<ShapeData>                 shapes;
+    DynamicArray<ID2D1TransformedGeometry*> transformed_geometries;
+    DynamicArray<ID2D1GeometryRealization*> low_fidelities;
+    HashMap<PathId, size_t>                 index; // maps path id to index in one of the above arrays
+    DynamicArray<PathId>                    reverse_index; // maps an index in one of the above arrays to a path id
+    PathId                                  next_id;
+    Paths(size_t estimated_cap);
+
+    void Free();
+
+    PathId AddPath(ShapeData p);
+    PathId NextId();
+
+    size_t Length();
+
+    void RealizeGeometry(DXState *dx, PathId id);
+    void RealizeAllGeometry(DXState *dx);
+
+    ShapeData* GetShapeData(PathId id);
+    ID2D1TransformedGeometry** GetTransformedGeometry(PathId id);
+    ID2D1GeometryRealization** GetLowFidelity(PathId id);
+    Rect GetBounds(PathId id);
+};
+
+class Collections {
+    public:
+    HashMap<PathId, CollectionId> collections;
+    HashMap<CollectionId, DynamicArray<PathId>> reverse_collections_index;
+    CollectionId next_id;
+    Collections(size_t estimated_shapes);
+
+    void Free();
+
+    CollectionId NextId();
+    CollectionId CreateCollectionForShape(PathId shape_id);
+    CollectionId GetCollectionId(PathId shape_id);
+
+    void SetCollection(PathId shape_id, CollectionId collection_id);
+};
+
+// TODO: map tags to a number. It'll make it faster to compare and then we don't have to store the string twice
+class Tags {
+    public:
+    HashMap<PathId, DynamicArray<String>> tags; // maps a shape id to all of its tags
+    HashMap<String, DynamicArray<PathId>> reverse_tags; // maps a tag to every shape that contains that tag
+    Tags(size_t estimated_shapes);
+
+    void Free();
+
+    DynamicArray<String>* GetTags(PathId shape_id);
+    void AddTag(size_t shape_id, char* tag_cstr);
 };
 
 enum class ShapeType {
@@ -224,22 +278,9 @@ class Document {
     public:
     DynamicArray<Text> texts;
 
-    // TODO: think about combining these two since they have similar access patterns
-    HashMap<size_t, ID2D1PathGeometry*> geometries;
-    HashMap<size_t, Transformation> transformations;
-
-    DynamicArray<ID2D1TransformedGeometry*> transformed_geometries;
-    HashMap<size_t, size_t> transformed_geometries_index; // Shape id to index into transformed_geometries array
-    HashMap<size_t, size_t> reverse_transformed_geometries_index; // Index in the array to shape id
-
-    DynamicArray<ID2D1GeometryRealization*> low_fidelities;
-    HashMap<size_t, size_t> low_fidelities_index; // shape id to index in low fidelities array
-
-    HashMap<size_t, size_t> collections; // maps a shape id to its collection id
-    HashMap<size_t, DynamicArray<size_t>> reverse_collections_index; // maps collection ids to an array of shape ids
-
-    HashMap<size_t, DynamicArray<String>> tags_index; // maps a shape id to the tags it has
-    HashMap<String, DynamicArray<size_t>> reverse_tags_index; // maps tags to shape ids with that tag
+    Paths paths;
+    Collections collections;
+    Tags tags;
 
     DynamicArray<ActiveShape> active_shapes;
 
@@ -253,9 +294,7 @@ class Document {
 
     void Free();
 
-    void AddNewPath(Path p);
-    size_t NextCollection();
-    size_t NextId();
+    void AddNewPath(ShapeData p);
 
     void SelectShape(Vec2 screen_pos);
     void SelectShapes(Vec2 start, Vec2 end);
@@ -265,11 +304,7 @@ class Document {
     Vec2 MousePos();
     void TogglePipelineView();
 
-    D2D1_RECT_F GeometryBound(size_t id);
-    void RealizeGeometry(DXState* dx, size_t id);
     void CollectActiveShapes();
-    void SetCollection(size_t shape_id, size_t collection_id);
-    void AddTag(size_t shape_id, char* c_str);
 
     void AutoCollect();
 };
@@ -353,9 +388,10 @@ void CreateDebugConsole();
 void CreateGuiContext();
 void TeardownGui();
 void ExitOnFailure(HRESULT hr);
-void Union(D2D1_RECT_F *a, D2D1_RECT_F *b);
+
 Vec2 GeometryCenter(ID2D1Geometry* geometry);
-Transformation GetTranslationTo(Vec2 to, D2D1_RECT_F* bound);
+Transformation GetTranslationTo(Vec2 to, Rect* from);
 Rect GetBounds(ID2D1TransformedGeometry* geo);
+void CreateGeometryRealizations(ShapeData* shape, ID2D1TransformedGeometry** transformed_geometry, ID2D1GeometryRealization** low_fidelity, DXState *dx);
 
 #endif

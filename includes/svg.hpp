@@ -13,11 +13,11 @@ class ViewPort {
 };
 
 // Parsing SVG Tag Methods
-Path ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
-Path ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
-Path ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
-Path ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
-Path ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+ShapeData ParseTagCircle(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+ShapeData ParseTagLine(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+ShapeData ParseTagPath(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+ShapeData ParseTagPolygon(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
+ShapeData ParseTagRect(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 Text ParseTagText(pugi::xml_node_iterator node, ViewPort *viewport, DXState *dx);
 
 // Generic Parsing Methods

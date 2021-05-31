@@ -16,7 +16,7 @@
 
 HRESULT DXState::CreateDeviceIndependentResources() {
     HRESULT hr;
-    hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &this->factory);
+    hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, &this->factory);
 
     if (FAILED(hr)) {
         return hr;
@@ -326,16 +326,16 @@ void DXState::RenderPaths(Document *doc) {
 }
 
 void DXState::RenderPathsLowFidelity(Document *doc) {
-    ID2D1GeometryRealization** data = doc->low_fidelities.Data();
-    for (auto i=0; i<doc->low_fidelities.Length(); i++) {
+    ID2D1GeometryRealization** data = doc->paths.low_fidelities.Data();
+    for (auto i=0; i<doc->paths.low_fidelities.Length(); i++) {
         this->d2_device_context->DrawGeometryRealization(*data, this->blackBrush);
         data++;
     }
 }
 
 void DXState::RenderPathsHighFidelity(Document *doc) {
-    ID2D1TransformedGeometry** data = doc->transformed_geometries.Data();
-    for (auto i=0; i<doc->transformed_geometries.Length(); i++) {
+    ID2D1TransformedGeometry** data = doc->paths.transformed_geometries.Data();
+    for (auto i=0; i<doc->paths.transformed_geometries.Length(); i++) {
         this->d2_device_context->DrawGeometry(*data, this->blackBrush, kHairline);
         data++;
     }
@@ -409,7 +409,7 @@ void DXState::RenderDebugWindow(UIState *ui, Document *doc) {
 
     ImGui::Begin("Debug");
     ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-    ImGui::Text("%zu paths", doc->transformed_geometries.Length());
+    ImGui::Text("%zu paths", doc->paths.Length());
     ImGui::Text("%zu texts", doc->texts.Length());
     ImGui::Text("Mouse Screen: (%.3f, %.3f)", doc->view.mouse_pos_screen.x, doc->view.mouse_pos_screen.y);
     ImGui::Text("Mouse Document: (%.3f, %.3f)", doc->MousePos().x, doc->MousePos().y);
@@ -463,7 +463,7 @@ void DXState::RenderCommandPrompt(UIState *ui, Document *doc) {
 
             Vec2 pos = ParseVec(&iter);
 
-            doc->AddNewPath(Path::CreateRect(pos, size, this));
+            doc->AddNewPath(PathBuilder::CreateRect(pos, size, this));
 
             CommandPromptReset(ui);
             goto CmdPromptEnd;
@@ -506,25 +506,29 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
         ActiveShape *shape = doc->active_shapes.GetPtr(i);
 
         if (ImGui::TreeNode(shape, "Shape %zu\n", shape->id)) {
-            Transformation* transform = doc->transformations.GetPtr(shape->id);
-            D2D1_RECT_F bound = doc->GeometryBound(shape->id);
-            size_t collection = *doc->collections.GetPtr(shape->id);
+            ShapeData* shape_data     = doc->paths.GetShapeData(shape->id);
+            Transformation* transform = &shape_data->transform;
+
+            size_t collection = doc->collectionsz.GetCollectionId(shape->id);
+
+            Rect bound = doc->paths.GetBounds(shape->id);
 
             ImGui::Text("Shape Id: %zu", shape->id);
             ImGui::Text("Collection: %zu", collection);
 
-            ImGui::Text("Pos: (%.3f, %.3f)", bound.left, bound.top);
-            ImGui::Text("Size: (%.3f, %.3f)", bound.right - bound.left, bound.bottom - bound.top);
+            ImGui::Text("Pos: (%.3f, %.3f)", bound.Left(), bound.Top());
+            ImGui::Text("Size: (%.3f, %.3f)", bound.Width(), bound.Height());
 
-            if(ImGui::DragFloat("Translation x", &transform->translation.x, 0.125)) doc->RealizeGeometry(this, shape->id);
-            if(ImGui::DragFloat("Translation y", &transform->translation.y, 0.125)) doc->RealizeGeometry(this, shape->id);
-            if(ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125)) doc->RealizeGeometry(this, shape->id);
-            if(ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125)) doc->RealizeGeometry(this, shape->id);
+            if(ImGui::DragFloat("Translation x", &transform->translation.x, 0.125)) doc->paths.RealizeGeometry(this, shape->id);
+            if(ImGui::DragFloat("Translation y", &transform->translation.y, 0.125)) doc->paths.RealizeGeometry(this, shape->id);
+            if(ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125)) doc->paths.RealizeGeometry(this, shape->id);
+            if(ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125)) doc->paths.RealizeGeometry(this, shape->id);
 
-            if(ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f)) doc->RealizeGeometry(this, shape->id);
+            if(ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f)) doc->paths.RealizeGeometry(this, shape->id);
 
             ImGui::Text("Tags:");
-            DynamicArray<String>* tags = doc->tags_index.GetPtr(shape->id);
+            DynamicArray<String>* tags = doc->tags.GetTags(shape->id);
+
             if (tags) {
                 for (auto i=0; i<tags->Length(); i++) {
                     String *tag = tags->GetPtr(i);
@@ -533,7 +537,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             }
 
             if (ImGui::InputText("Add Tag", tag_buf, ARRAYSIZE(tag_buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
-                doc->AddTag(shape->id, tag_buf);
+                doc->tags.AddTag(shape->id, tag_buf);
                 ClearBuf(tag_buf);
             }
 

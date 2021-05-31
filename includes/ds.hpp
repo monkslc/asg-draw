@@ -196,6 +196,13 @@ class DynamicArrayEx {
         this->Free(allocator);
     }
 
+    void ReleaseAll() {
+        for (auto i=0; i<this->length; i++) {
+            T* elem = this->GetPtr(i);
+            (*elem)->Release();
+        }
+    }
+
     bool operator==(DynamicArrayEx<T, A>& rhs) {
         if (this->Length() != rhs.Length()) {
             return false;
@@ -290,6 +297,10 @@ class DynamicArray {
         }
 
         this->Free();
+    }
+
+    void ReleaseAll() {
+        this->array.ReleaseAll();
     }
 
     bool operator==(DynamicArray<T>& rhs) {
@@ -465,9 +476,9 @@ class HashMapEx {
     public:
     DynamicArrayEx<KeyValuePair<K, V>, A> *data;
     size_t capacity;
-    size_t size;
+    size_t length;
 
-    HashMapEx(size_t capacity, A *allocator) : size(0), capacity(capacity) {
+    HashMapEx(size_t capacity, A *allocator) : length(0), capacity(capacity) {
         this->data = allocator->template Alloc<DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>>(capacity);
         for (auto i=0; i<capacity; i++) {
             data[i] = DynamicArrayEx<KeyValuePair<K, V>, A>(kDefaultSlotSize, allocator);
@@ -526,10 +537,10 @@ class HashMapEx {
             }
         }
 
-        this->size++;
+        this->length++;
         hash_slot->Push(KeyValuePair<K, V>(key, value), allocator);
 
-        if (size / capacity > 0.85) {
+        if (length / capacity > 0.85) {
             this->Expand(allocator);
         }
 
@@ -543,7 +554,7 @@ class HashMapEx {
             KeyValuePair<K, V> *entry = hash_slot->GetPtr(i);
             if (entry->key == key) {
                 hash_slot->RemoveIndex(i);
-                this->size--;
+                this->length--;
                 return;
             }
         }
@@ -590,10 +601,14 @@ class HashMapEx {
             }
         }
 
-        this->size++;
+        this->length++;
         KeyValuePair<K, V> default_entry = KeyValuePair<K, V>(key, V());
         hash_slot->Push(default_entry, allocator);
         return &hash_slot->LastPtr()->value;
+    }
+
+    size_t Length() {
+        return this->length;
     }
 
     size_t Capacity() {
@@ -657,6 +672,10 @@ class HashMap {
 
     V* GetPtrOrDefault(K key) {
         return this->map.GetPtrOrDefault(key, &this->allocator);
+    }
+
+    size_t Length() {
+        return this->map.Length();
     }
 
     size_t Capacity() {

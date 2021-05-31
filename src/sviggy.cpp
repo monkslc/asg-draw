@@ -258,7 +258,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
                         Pipeline p;
 
-                        size_t memory_estimation = app.ActiveDoc()->transformed_geometries.Length() * 100;
+                        size_t memory_estimation = app.ActiveDoc()->paths.Length() * 100;
                         LinearAllocatorPool allocator = LinearAllocatorPool(memory_estimation);
 
                         p.bins.Push(Vec2Many(Vec2(48, 24), kInfinity), &allocator);

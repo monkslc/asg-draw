@@ -1,9 +1,18 @@
 #include <d2d1.h>
+#include <limits>
 
 #include "sviggy.hpp"
 
 Vec2::Vec2(float x, float y) : x(x), y(y) {};
 Vec2::Vec2(D2D1_POINT_2F p) : x(p.x), y(p.y) {};
+
+Vec2 Vec2::Min() {
+    return Vec2(std::numeric_limits<float>::min(), std::numeric_limits<float>::min());
+}
+
+Vec2 Vec2::Max() {
+    return Vec2(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+}
 
 D2D1_POINT_2F Vec2::D2Point() {
     return D2D1::Point2F(x, y);
