@@ -169,7 +169,8 @@ void Document::AutoCollect() {
             }
 
             // Since the shapes are sorted, the collection will not be able to hold any of the
-            // the shapes that follow if shape.left is greater than the collection right
+            // the shapes that follow if shape.left is greater than the collection right so we
+            // advance search_from
             if (shape->Left() > collection->Right()) {
                 search_from = j;
             }
