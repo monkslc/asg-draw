@@ -509,7 +509,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             ShapeData* shape_data     = doc->paths.GetShapeData(shape->id);
             Transformation* transform = &shape_data->transform;
 
-            size_t collection = doc->collectionsz.GetCollectionId(shape->id);
+            size_t collection = doc->collections.GetCollectionId(shape->id);
 
             Rect bound = doc->paths.GetBounds(shape->id);
 

@@ -25,7 +25,7 @@ void Pipeline::Run(Document* input_doc, LinearAllocatorPool* allocator) {
 
         for (auto j=0; j<bin->rects.Length(); j++) {
             Vec2Named packed_collection = bin->rects.Get(j);
-            DynamicArray<size_t>* collection = input_doc->collectionsz.reverse_collections_index.GetPtr(packed_collection.id);
+            DynamicArray<size_t>* collection = input_doc->collections.reverse_collections_index.GetPtr(packed_collection.id);
 
             Rect collection_bound = *collection_bounds.map.GetPtr(packed_collection.id);
             for (auto shape_idx=0; shape_idx<collection->Length(); shape_idx++) {
@@ -59,14 +59,14 @@ void Pipeline::Run(Document* input_doc, LinearAllocatorPool* allocator) {
 }
 
 CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocator) {
-    size_t collection_count = doc->collectionsz.reverse_collections_index.Length();
+    size_t collection_count = doc->collections.reverse_collections_index.Length();
     CollectionBounds bounds = {
         DynamicArrayEx<RectNamed, LinearAllocatorPool>(collection_count, allocator),
         HashMapEx<size_t, Rect, LinearAllocatorPool>(collection_count, allocator),
     };
 
-    for (auto i=0; i<doc->collectionsz.reverse_collections_index.Capacity(); i++) {
-        auto slot = doc->collectionsz.reverse_collections_index.Slot(i);
+    for (auto i=0; i<doc->collections.reverse_collections_index.Capacity(); i++) {
+        auto slot = doc->collections.reverse_collections_index.Slot(i);
 
         for (auto j=0; j<slot->Length(); j++) {
             auto collection = slot->GetPtr(j);
