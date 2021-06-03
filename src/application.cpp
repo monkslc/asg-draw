@@ -48,12 +48,12 @@ Document::Document(size_t estimated_shapes) :
 
     active_shapes(DynamicArray<ActiveShape>(5)),
 
-    pipeline_shapes(DynamicArray<Shape>(estimated_shapes)) {};
+    pipeline_shapes(Paths(estimated_shapes)) {};
 
 void Document::Free() {
     this->texts.FreeAll();
 
-    this->paths.Free();
+    this->paths.FreeAndReleaseResources();
     this->collections.Free();
     this->tags.Free();
 

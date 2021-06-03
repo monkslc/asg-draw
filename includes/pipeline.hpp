@@ -6,7 +6,7 @@ class Pipeline {
     DynamicArrayEx<StringEx<LinearAllocatorPool>, LinearAllocatorPool> tags;
     Pipeline() {};
 
-    void Run(Document* input_doc, LinearAllocatorPool* allocator);
+    void Run(Document* input_doc, DXState *dx, LinearAllocatorPool* allocator);
 };
 
 struct CollectionBounds {

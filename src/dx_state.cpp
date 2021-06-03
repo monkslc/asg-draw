@@ -319,23 +319,23 @@ void DXState::RenderPaths(Document *doc) {
     HRESULT hr = S_OK;
 
     if (doc->view.scale < 0.1) {
-        return this->RenderPathsLowFidelity(doc);
+        return this->RenderPathsLowFidelity(&doc->paths);
     }
 
-    return this->RenderPathsHighFidelity(doc);
+    return this->RenderPathsHighFidelity(&doc->paths);
 }
 
-void DXState::RenderPathsLowFidelity(Document *doc) {
-    ID2D1GeometryRealization** data = doc->paths.low_fidelities.Data();
-    for (auto i=0; i<doc->paths.low_fidelities.Length(); i++) {
+void DXState::RenderPathsLowFidelity(Paths *paths) {
+    ID2D1GeometryRealization** data = paths->low_fidelities.Data();
+    for (auto i=0; i<paths->Length(); i++) {
         this->d2_device_context->DrawGeometryRealization(*data, this->blackBrush);
         data++;
     }
 }
 
-void DXState::RenderPathsHighFidelity(Document *doc) {
-    ID2D1TransformedGeometry** data = doc->paths.transformed_geometries.Data();
-    for (auto i=0; i<doc->paths.transformed_geometries.Length(); i++) {
+void DXState::RenderPathsHighFidelity(Paths *paths) {
+    ID2D1TransformedGeometry** data = paths->transformed_geometries.Data();
+    for (auto i=0; i<paths->Length(); i++) {
         this->d2_device_context->DrawGeometry(*data, this->blackBrush, kHairline);
         data++;
     }
@@ -350,24 +350,7 @@ void DXState::RenderText(Document *doc) {
 }
 
 void DXState::RenderPipeline(Document *doc) {
-    for (auto i=0; i<doc->pipeline_shapes.Length(); i++) {
-        Shape shape = doc->pipeline_shapes.Get(i);
-        D2D1_RECT_F bound;
-        HRESULT hr = shape.geometry->GetBounds(NULL, &bound);
-        Vec2 center = Vec2((bound.left + bound.right) / 2, (bound.top + bound.bottom) / 2);
-
-        ID2D1Geometry* og;
-        ID2D1TransformedGeometry* geometry;
-        this->factory->CreateTransformedGeometry(
-            shape.geometry,
-            shape.transform.Matrix(center),
-            &geometry
-        );
-
-        this->d2_device_context->DrawGeometry(geometry, this->blackBrush, kHairline, NULL);
-
-        geometry->Release();
-    }
+    this->RenderPathsHighFidelity(&doc->pipeline_shapes);
 }
 
 void DXState::RenderGridLines() {

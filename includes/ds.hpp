@@ -182,6 +182,15 @@ class DynamicArrayEx {
         this->length = 0;
     }
 
+    DynamicArrayEx<T, A> Clone(A* allocator) {
+        DynamicArrayEx<T, A> new_array = DynamicArrayEx<T, A>(this->capacity, allocator);
+        new_array.length = this->length;
+
+        std::memcpy(new_array.data, this->data, sizeof(T) * this->length);
+
+        return new_array;
+    }
+
 
     void Free(A *allocator) {
         allocator->Free(this->data);
@@ -224,7 +233,19 @@ class DynamicArray {
     DynamicArrayEx<T, SysAllocator> array;
     DynamicArray(size_t capacity) : array(DynamicArrayEx<T, SysAllocator>(capacity, &global_allocator)) {};
 
-    DynamicArray() : array(DynamicArrayEx<T, SysAllocator>(0, &global_allocator)) {};
+    DynamicArray() : array(DynamicArrayEx<T, SysAllocator>()) {};
+    DynamicArray(DynamicArrayEx<T, SysAllocator> array) : array(array) {};
+
+    // Creates and array of size length with every entry set to 0
+    static DynamicArray<T> Zeroed(size_t length) {
+        auto array = DynamicArray<T>();
+        array.array.length   = length;
+        array.array.capacity = length;
+
+        array.array.data = (T*) calloc(length, sizeof(T));
+
+        return array;
+    }
 
     void IncreaseCapacity(size_t new_capacity) {
         this->array.IncreaseCapacity(new_capacity, &global_allocator);
@@ -284,6 +305,10 @@ class DynamicArray {
 
     void Clear() {
         return this->array.Clear();
+    }
+
+    DynamicArray<T> Clone() {
+        return DynamicArray<T>(this->array.Clone(&global_allocator));
     }
 
     void Free() {
@@ -487,7 +512,6 @@ class HashMapEx {
 
     HashMapEx() {}
 
-
     // This is not quite right because if we needed to reference the data explicitly, for example in a sys
     // allocator we would need to pass it the data
     void Free(A *allocator) {
@@ -619,8 +643,26 @@ class HashMapEx {
         return &this->data[i];
     }
 
+    HashMapEx<K, V, A> Clone(A* allocator) {
+        HashMapEx<K, V, A> new_map = HashMapEx<K, V, A>();
+        new_map.capacity = this->capacity;
+        new_map.length   = this->length;
+
+        new_map.data = allocator->template Alloc<DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>>(new_map.capacity);
+        std::memcpy(new_map.data, this->data, sizeof(DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>) * new_map.capacity);
+
+        for (auto i=0; i<new_map.capacity; i++) {
+            new_map.data[i] = this->Slot(i)->Clone(allocator);
+        }
+
+        return new_map;
+    }
 };
 
+// TODO:
+// Right now we have a problem with this map that we don't ever really take back the space used in it
+// which could be fine but we have to use a new linear allocator when expanding, which we can't really do right now
+// If the hashmap increases in size significantly, our linear allocator is way too small
 template <typename K, typename V>
 class HashMap {
     public:
@@ -635,6 +677,8 @@ class HashMap {
         size_t kv_size = sizeof(KeyValuePair<K, V>);
         this->map = HashMapEx<K, V, LinearAllocatorPool>(capacity, &this->allocator);
     };
+
+    HashMap(HashMapEx<K, V, LinearAllocatorPool> map, LinearAllocatorPool allocator) : map(map), allocator(allocator) {};
 
     void Free() {
         this->map.Free(&this->allocator);
@@ -684,6 +728,10 @@ class HashMap {
 
     DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>* Slot(size_t i) {
         return this->map.Slot(i);
+    }
+
+    HashMap<K, V> Clone() {
+        return HashMap(this->map.Clone(&this->allocator), this->allocator);
     }
 };
 

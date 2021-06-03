@@ -265,7 +265,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
                         p.tags.Push(StringEx<LinearAllocatorPool>((char*)"Bound", &allocator), &allocator);
 
-                        p.Run(app.ActiveDoc(), &allocator);
+                        p.Run(app.ActiveDoc(), &dxstate, &allocator);
 
                         allocator.FreeAllocator();
                         break;

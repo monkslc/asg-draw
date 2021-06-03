@@ -186,19 +186,29 @@ Paths::Paths(size_t estimated_cap) :
     reverse_index(DynamicArray<PathId>(estimated_cap)),
     next_id(0) {};
 
+void Paths::FreeAndReleaseResources() {
+    this->ReleaseResources();
+    this->Free();
+};
+
 void Paths::Free() {
     this->shapes.Free();
-
-    this->transformed_geometries.ReleaseAll();
     this->transformed_geometries.Free();
-
-    this->low_fidelities.ReleaseAll();
     this->low_fidelities.Free();
-
     this->index.Free();
-
     this->reverse_index.Free();
-};
+}
+
+void Paths::ReleaseResources() {
+    this->transformed_geometries.ReleaseAll();
+    this->low_fidelities.ReleaseAll();
+}
+
+PathId Paths::NextId() {
+    size_t next = this->next_id;
+    this->next_id++;
+    return next;
+}
 
 PathId Paths::AddPath(ShapeData path) {
     PathId id    = this->NextId();
@@ -215,20 +225,13 @@ PathId Paths::AddPath(ShapeData path) {
     return id;
 };
 
-PathId Paths::NextId() {
-    size_t next = this->next_id;
-    this->next_id++;
-    return next;
-}
-
 size_t Paths::Length() {
-    // SInce all fo the arrays should be the same size arbitrarily pick one of them for the length
+    // Since all fo the arrays should be the same size arbitrarily pick one of them for the length
     return this->shapes.Length();
 }
 
 
 void Paths::RealizeGeometry(DXState *dx, PathId id) {
-    HRESULT hr;
     size_t index = *this->index.GetPtr(id);
 
     ShapeData* path                                 = this->shapes.GetPtr(index);
@@ -238,6 +241,17 @@ void Paths::RealizeGeometry(DXState *dx, PathId id) {
     CreateGeometryRealizations(path, transformed_geometry, low_fidelity, dx);
 }
 
+// We provide a method to realize only the high fidelity geometry for the pipeline
+// shapes which get changed too often to do the more expensive low fidelity realization
+void Paths::RealizeHighFidelityGeometry(DXState *dx, PathId id) {
+    size_t index = *this->index.GetPtr(id);
+
+    ShapeData* path                                 = this->shapes.GetPtr(index);
+    ID2D1TransformedGeometry** transformed_geometry = this->transformed_geometries.GetPtr(index);
+
+    CreateHighFidelityRealization(path, transformed_geometry, dx);
+}
+
 void Paths::RealizeAllGeometry(DXState *dx) {
     for (auto i=0; i<this->Length(); i++) {
         ShapeData* path                                 = this->shapes.GetPtr(i);
@@ -245,6 +259,17 @@ void Paths::RealizeAllGeometry(DXState *dx) {
         ID2D1GeometryRealization** low_fidelity         = this->low_fidelities.GetPtr(i);
 
         CreateGeometryRealizations(path, transformed_geometry, low_fidelity, dx);
+    }
+}
+
+// We provide a method to realize only the high fidelity geometry for the pipeline
+// shapes which get changed too often to do the more expensive low fidelity realization
+void Paths::RealizeAllHighFidelityGeometry(DXState *dx) {
+    for (auto i=0; i<this->Length(); i++) {
+        ShapeData* path                                 = this->shapes.GetPtr(i);
+        ID2D1TransformedGeometry** transformed_geometry = this->transformed_geometries.GetPtr(i);
+
+        CreateHighFidelityRealization(path, transformed_geometry, dx);
     }
 }
 
@@ -273,6 +298,29 @@ Rect Paths::GetBounds(PathId id) {
     ExitOnFailure(hr);
 
     return Rect(&bounds);
+}
+
+void Paths::SetTransform(PathId id, Transformation transform) {
+    size_t index = *this->index.GetPtr(id);
+    this->shapes.Data()[index].transform = transform;
+}
+
+Paths Paths::Clone() {
+    // Clone sets the transformed geometries and the low fidelities to null in order to detach
+    // the new Paths from the original resources created with DXState
+    auto transformed_geometries = DynamicArray<ID2D1TransformedGeometry*>::Zeroed(this->transformed_geometries.Length());
+    auto low_fidelities         = DynamicArray<ID2D1GeometryRealization*>::Zeroed(this->low_fidelities.Length());
+
+    Paths cloned = Paths (
+        this->shapes.Clone(),
+        transformed_geometries,
+        low_fidelities,
+        this->index.Clone(),
+        this->reverse_index.Clone(),
+        this->next_id
+    );
+
+    return cloned;
 }
 
 Collections::Collections(size_t estimated_shapes) :
@@ -397,7 +445,7 @@ Rect Rect::Union(Rect* other) {
     float bottom = std::max<float>(this->Bottom(), other->Bottom());
 
     Vec2 pos  = Vec2(left, top);
-    Vec2 size = Vec2(right - left, top - bottom);
+    Vec2 size = Vec2(right - left, bottom - top);
 
     return Rect(pos, size);
 }
@@ -454,6 +502,17 @@ Rect GetBounds(ID2D1TransformedGeometry* geo) {
 }
 
 constexpr float kFloatLowFidelity = 1.0f;
+void CreateHighFidelityRealization(ShapeData* shape, ID2D1TransformedGeometry** transformed_geometry, DXState *dx) {
+    HRESULT hr;
+
+    if((*transformed_geometry)) {
+        (*transformed_geometry)->Release();
+    }
+
+    hr = dx->factory->CreateTransformedGeometry(shape->geometry, shape->TransformMatrix(), transformed_geometry);
+    ExitOnFailure(hr);
+}
+
 void CreateGeometryRealizations(ShapeData* shape, ID2D1TransformedGeometry** transformed_geometry, ID2D1GeometryRealization** low_fidelity, DXState *dx) {
     HRESULT hr;
 

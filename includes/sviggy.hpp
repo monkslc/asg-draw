@@ -190,20 +190,45 @@ class Paths {
     PathId                                  next_id;
     Paths(size_t estimated_cap);
 
+    // Constructor for cloning
+    Paths(
+        DynamicArray<ShapeData> shapes,
+        DynamicArray<ID2D1TransformedGeometry*> transformed_geometries,
+        DynamicArray<ID2D1GeometryRealization*> low_fidelities,
+        HashMap<PathId, size_t> index,
+        DynamicArray<PathId> reverse_index,
+        PathId next_id
+    ) : shapes(shapes),
+        transformed_geometries(transformed_geometries),
+        low_fidelities(low_fidelities),
+        index(index),
+        reverse_index(reverse_index),
+        next_id(next_id) {};
+
+    void FreeAndReleaseResources();
     void Free();
+    void ReleaseResources();
+
+    PathId NextId();
 
     PathId AddPath(ShapeData p);
-    PathId NextId();
 
     size_t Length();
 
     void RealizeGeometry(DXState *dx, PathId id);
+    void RealizeHighFidelityGeometry(DXState *dx, PathId id);
+
     void RealizeAllGeometry(DXState *dx);
+    void RealizeAllHighFidelityGeometry(DXState *dx);
 
     ShapeData* GetShapeData(PathId id);
     ID2D1TransformedGeometry** GetTransformedGeometry(PathId id);
     ID2D1GeometryRealization** GetLowFidelity(PathId id);
     Rect GetBounds(PathId id);
+
+    void SetTransform(PathId id, Transformation transform);
+
+    Paths Clone();
 };
 
 class Collections {
@@ -284,8 +309,10 @@ class Document {
 
     DynamicArray<ActiveShape> active_shapes;
 
-    // Geometries in here don't have to get freed because they will be the same geometries from the document
-    DynamicArray<Shape> pipeline_shapes;
+    // We reuse the Paths class for pipeline_shapes but we ignore the low
+    // fidelity realizations because the pipeline shapes change so often
+    // it doesn't make sense to do the expensive low fidelity realizations
+    Paths pipeline_shapes;
 
     View view;
     size_t next_id = 0;
@@ -371,8 +398,8 @@ class DXState {
     HRESULT Resize(UINT width, UINT height);
     HRESULT Render(Document *doc,  UIState *ui);
     void RenderPaths(Document *doc);
-    void RenderPathsLowFidelity(Document *doc);
-    void RenderPathsHighFidelity(Document *doc);
+    void RenderPathsLowFidelity(Paths *paths);
+    void RenderPathsHighFidelity(Paths *paths);
     void RenderText(Document *doc);
     void RenderPipeline(Document *doc);
     void RenderGridLines();
@@ -392,6 +419,7 @@ void ExitOnFailure(HRESULT hr);
 Vec2 GeometryCenter(ID2D1Geometry* geometry);
 Transformation GetTranslationTo(Vec2 to, Rect* from);
 Rect GetBounds(ID2D1TransformedGeometry* geo);
+void CreateHighFidelityRealization(ShapeData* shape, ID2D1TransformedGeometry** transformed_geometry, DXState *dx);
 void CreateGeometryRealizations(ShapeData* shape, ID2D1TransformedGeometry** transformed_geometry, ID2D1GeometryRealization** low_fidelity, DXState *dx);
 
 #endif

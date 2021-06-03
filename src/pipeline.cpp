@@ -6,18 +6,22 @@
 
 #include <chrono>
 
-void Pipeline::Run(Document* input_doc, LinearAllocatorPool* allocator) {
+void Pipeline::Run(Document* input_doc, DXState *dx, LinearAllocatorPool* allocator) {
     auto begin = std::chrono::high_resolution_clock::now();
 
-    auto collection_bounds = GetCollectionBounds(input_doc, allocator);
-
+    // Free the old memory and copy over a fresh copy of the paths
+    // There's a performance gain to be had by resuing the memory instead
+    // of blindly freeing but this works for now>
+    input_doc->pipeline_shapes.Free();
+    input_doc->pipeline_shapes = input_doc->paths.Clone();
+    input_doc->pipeline_shapes.RealizeAllHighFidelityGeometry(dx);
     auto e1 = std::chrono::high_resolution_clock::now();
+
+    auto collection_bounds = GetCollectionBounds(input_doc, allocator);
 
     DynamicArrayEx<Bin, LinearAllocatorPool> packed_bins = PackBins(&this->bins, &collection_bounds.array, allocator);
 
     auto e2 = std::chrono::high_resolution_clock::now();
-
-    input_doc->pipeline_shapes.Clear();
 
     Vec2 bin_offset = Vec2(0.0f, 0.0f);
     for (auto i=0; i<packed_bins.Length(); i++) {
@@ -31,21 +35,26 @@ void Pipeline::Run(Document* input_doc, LinearAllocatorPool* allocator) {
             for (auto shape_idx=0; shape_idx<collection->Length(); shape_idx++) {
                 size_t shape_id = collection->Get(shape_idx);
 
-                ID2D1TransformedGeometry* geometry = *input_doc->paths.GetTransformedGeometry(shape_id);
+                ID2D1TransformedGeometry* geometry = *input_doc->pipeline_shapes.GetTransformedGeometry(shape_id);
 
                 Rect shape_bound = GetBounds(geometry);
 
                 Vec2 shape_offset = Vec2(shape_bound.Left() - collection_bound.Left(), shape_bound.Top() - collection_bound.Top());
                 Vec2 desired      = bin_offset + packed_collection.vec2 + shape_offset;
 
+                // Right now we're not really setup to provide a transformation on top of a current transformation
+                // This could be fixed by just moving the transformation to a matrix. Since we only need to worry
+                // about the translation here, just add the translation from the new transformation to the original
                 Transformation transformation = GetTranslationTo(desired, &shape_bound);
-
-                input_doc->pipeline_shapes.Push(Shape(geometry, transformation));
+                ShapeData *data = input_doc->pipeline_shapes.GetShapeData(shape_id);
+                data->transform.translation += transformation.translation;
             }
         }
 
         bin_offset += bin->size;
     }
+
+    input_doc->pipeline_shapes.RealizeAllHighFidelityGeometry(dx);
 
     auto e3 = std::chrono::high_resolution_clock::now();
     auto el1 = std::chrono::duration_cast<std::chrono::nanoseconds>(e1 - begin);
@@ -73,11 +82,11 @@ CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocat
 
             size_t shape_id = collection->value.Get(0);
 
-            Rect collection_bound = doc->paths.GetBounds(shape_id);
+            Rect collection_bound = doc->pipeline_shapes.GetBounds(shape_id);
 
             for (auto k=1; k<collection->value.Length(); k++) {
                 size_t shape_id               = collection->value.Get(k);
-                ID2D1TransformedGeometry* geo = *doc->paths.GetTransformedGeometry(shape_id);
+                ID2D1TransformedGeometry* geo = *doc->pipeline_shapes.GetTransformedGeometry(shape_id);
 
                 Rect shape_bound = GetBounds(geo);
 
