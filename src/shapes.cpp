@@ -225,6 +225,38 @@ PathId Paths::AddPath(ShapeData path) {
     return id;
 };
 
+void Paths::DeletePath(PathId id) {
+    size_t index = *this->index.GetPtr(id);
+    this->index.Remove(id);
+
+    if (this->transformed_geometries.Get(index)) {
+        this->transformed_geometries.Get(index)->Release();
+    }
+
+    if (this->low_fidelities.Get(index)) {
+        this->low_fidelities.Get(index)->Release();
+    }
+
+    this->shapes                .array.length--;
+    this->transformed_geometries.array.length--;
+    this->low_fidelities        .array.length--;
+
+    // If the arrays had more than one item and that was not the last item
+    // we move the item that was at the end into the old paths position
+    // and update the indexes for it
+    size_t moved_item_index = this->shapes.Length() - 1;
+    if (index < moved_item_index) {
+        PathId moved_item_id = this->reverse_index.Get(moved_item_index);
+
+        this->shapes                .array.data[index] = this->shapes                .array.data[moved_item_index];
+        this->transformed_geometries.array.data[index] = this->transformed_geometries.array.data[moved_item_index];
+        this->low_fidelities        .array.data[index] = this->low_fidelities        .array.data[moved_item_index];
+        this->reverse_index         .array.data[index] = this->reverse_index         .array.data[moved_item_index];
+
+        this->index.Set(moved_item_id, index);
+    }
+}
+
 size_t Paths::Length() {
     // Since all fo the arrays should be the same size arbitrarily pick one of them for the length
     return this->shapes.Length();

@@ -183,8 +183,8 @@ class PathBuilder {
 class Paths {
     public:
     DynamicArray<ShapeData>                 shapes;
-    DynamicArray<ID2D1TransformedGeometry*> transformed_geometries;
-    DynamicArray<ID2D1GeometryRealization*> low_fidelities;
+    DynamicArray<ID2D1TransformedGeometry*> transformed_geometries; // Entries can be null before being rendered
+    DynamicArray<ID2D1GeometryRealization*> low_fidelities; // Entries can be null before being rendered. Entries are always null for pipeline shapes
     HashMap<PathId, size_t>                 index; // maps path id to index in one of the above arrays
     DynamicArray<PathId>                    reverse_index; // maps an index in one of the above arrays to a path id
     PathId                                  next_id;
@@ -212,6 +212,7 @@ class Paths {
     PathId NextId();
 
     PathId AddPath(ShapeData p);
+    void DeletePath(PathId id);
 
     size_t Length();
 

@@ -142,7 +142,7 @@ class DynamicArrayEx {
             this->data[index] = this->data[last_index];
         }
 
-        this->length --;
+        this->length--;
     }
 
     T Get(size_t index) {
