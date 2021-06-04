@@ -524,11 +524,6 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
                 ClearBuf(tag_buf);
             }
 
-            if (ImGui::Button("Delete")) {
-                doc->paths.DeletePath(shape->id);
-                doc->active_shapes.Clear();
-            }
-
             ImGui::TreePop();
         }
 
