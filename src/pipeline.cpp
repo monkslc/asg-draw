@@ -17,11 +17,27 @@ void Pipeline::Run(Document* input_doc, DXState *dx, LinearAllocatorPool* alloca
     input_doc->pipeline_shapes.RealizeAllHighFidelityGeometry(dx);
     auto e1 = std::chrono::high_resolution_clock::now();
 
+    this->RunBinPacking(input_doc, dx, allocator);
+
+    auto e2 = std::chrono::high_resolution_clock::now();
+
+    input_doc->pipeline_shapes.RealizeAllHighFidelityGeometry(dx);
+
+    auto e3 = std::chrono::high_resolution_clock::now();
+    auto el1 = std::chrono::duration_cast<std::chrono::nanoseconds>(e1 - begin);
+    auto el2 = std::chrono::duration_cast<std::chrono::nanoseconds>(e2 - begin);
+    auto el3 = std::chrono::duration_cast<std::chrono::nanoseconds>(e3 - begin);
+    printf("Pipeline ran in %.3f seconds.\n", el1.count() * 1e-9);
+    printf("Pipeline ran in %.3f seconds.\n", el2.count() * 1e-9);
+    printf("Pipeline ran in %.3f seconds.\n", el3.count() * 1e-9);
+
+    printf("Ran Pipeline :)\n\n\n");
+}
+
+void Pipeline::RunBinPacking(Document* input_doc, DXState *dx, LinearAllocatorPool* allocator) {
     auto collection_bounds = GetCollectionBounds(input_doc, allocator);
 
     DynamicArrayEx<Bin, LinearAllocatorPool> packed_bins = PackBins(&this->bins, &collection_bounds.array, allocator);
-
-    auto e2 = std::chrono::high_resolution_clock::now();
 
     Vec2 bin_offset = Vec2(0.0f, 0.0f);
     for (auto i=0; i<packed_bins.Length(); i++) {
@@ -53,18 +69,6 @@ void Pipeline::Run(Document* input_doc, DXState *dx, LinearAllocatorPool* alloca
 
         bin_offset += bin->size;
     }
-
-    input_doc->pipeline_shapes.RealizeAllHighFidelityGeometry(dx);
-
-    auto e3 = std::chrono::high_resolution_clock::now();
-    auto el1 = std::chrono::duration_cast<std::chrono::nanoseconds>(e1 - begin);
-    auto el2 = std::chrono::duration_cast<std::chrono::nanoseconds>(e2 - begin);
-    auto el3 = std::chrono::duration_cast<std::chrono::nanoseconds>(e3 - begin);
-    printf("Pipeline ran in %.3f seconds.\n", el1.count() * 1e-9);
-    printf("Pipeline ran in %.3f seconds.\n", el2.count() * 1e-9);
-    printf("Pipeline ran in %.3f seconds.\n", el3.count() * 1e-9);
-
-    printf("Ran Pipeline :)\n\n\n");
 }
 
 CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocator) {

@@ -7,6 +7,7 @@ class Pipeline {
     Pipeline() {};
 
     void Run(Document* input_doc, DXState *dx, LinearAllocatorPool* allocator);
+    void RunBinPacking(Document* input_doc, DXState *dx, LinearAllocatorPool* allocator);
 };
 
 struct CollectionBounds {
