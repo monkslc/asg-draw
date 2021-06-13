@@ -492,7 +492,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             ShapeData* shape_data     = doc->paths.GetShapeData(shape->id);
             Transformation* transform = &shape_data->transform;
 
-            size_t collection = doc->collections.GetCollectionId(shape->id);
+            size_t collection = doc->paths.collections.GetCollectionId(shape->id);
 
             Rect bound = doc->paths.GetBounds(shape->id);
 
@@ -510,7 +510,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             if(ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f)) doc->paths.RealizeGeometry(this, shape->id);
 
             ImGui::Text("Tags:");
-            DynamicArray<String>* tags = doc->tags.GetTags(shape->id);
+            DynamicArray<String>* tags = doc->paths.tags.GetTags(shape->id);
 
             if (tags) {
                 for (auto i=0; i<tags->Length(); i++) {
@@ -520,7 +520,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             }
 
             if (ImGui::InputText("Add Tag", tag_buf, ARRAYSIZE(tag_buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
-                doc->tags.AddTag(shape->id, tag_buf);
+                doc->paths.tags.AddTag(shape->id, tag_buf);
                 ClearBuf(tag_buf);
             }
 

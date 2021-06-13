@@ -153,6 +153,16 @@ class DynamicArrayEx {
         return &this->data[index];
     }
 
+    T* Find(T elem) {
+        for (auto i=0; i<this->length; i++) {
+            if (this->Get(i) == elem) {
+                return &this->data[i];
+            }
+        }
+
+        return NULL;
+    }
+
     T Last() {
         return this->data[this->length - 1];
     }
@@ -277,6 +287,10 @@ class DynamicArray {
 
     T* GetPtr(size_t index) {
         return this->array.GetPtr(index);
+    }
+
+    T* Find(T elem) {
+        return this->array.Find(elem);
     }
 
     T Last() {
@@ -657,6 +671,14 @@ class HashMapEx {
 
         return new_map;
     }
+
+    void Clear() {
+       this->length = 0;
+       for (auto i=0; i<this->capacity; i++) {
+           auto slot = this->Slot(i);
+           slot->Clear();
+       }
+    }
 };
 
 // TODO:
@@ -732,6 +754,10 @@ class HashMap {
 
     HashMap<K, V> Clone() {
         return HashMap(this->map.Clone(&this->allocator), this->allocator);
+    }
+
+    void Clear() {
+        this->map.Clear();
     }
 };
 

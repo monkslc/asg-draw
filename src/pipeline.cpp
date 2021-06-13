@@ -11,19 +11,25 @@ void Pipeline::Run(Document* input_doc, DXState *dx, LinearAllocatorPool* alloca
 
     // Free the old memory and copy over a fresh copy of the paths
     // There's a performance gain to be had by resuing the memory instead
-    // of blindly freeing but this works for now>
-    input_doc->pipeline_shapes.Free();
+    // of blindly freeing but this works for now
+
+
+    // TODO: replace free with a clear for pipeline
+    // input_doc->pipeline_shapes.Free();
     input_doc->pipeline_shapes = input_doc->paths.Clone();
     input_doc->pipeline_shapes.RealizeAllHighFidelityGeometry(dx);
     auto e1 = std::chrono::high_resolution_clock::now();
 
-    this->RunBinPacking(input_doc, dx, allocator);
+    this->RunFilter(input_doc, dx, allocator);
 
     auto e2 = std::chrono::high_resolution_clock::now();
+
+    this->RunBinPacking(input_doc, dx, allocator);
 
     input_doc->pipeline_shapes.RealizeAllHighFidelityGeometry(dx);
 
     auto e3 = std::chrono::high_resolution_clock::now();
+
     auto el1 = std::chrono::duration_cast<std::chrono::nanoseconds>(e1 - begin);
     auto el2 = std::chrono::duration_cast<std::chrono::nanoseconds>(e2 - begin);
     auto el3 = std::chrono::duration_cast<std::chrono::nanoseconds>(e3 - begin);
@@ -32,6 +38,43 @@ void Pipeline::Run(Document* input_doc, DXState *dx, LinearAllocatorPool* alloca
     printf("Pipeline ran in %.3f seconds.\n", el3.count() * 1e-9);
 
     printf("Ran Pipeline :)\n\n\n");
+}
+
+void Pipeline::RunFilter(Document* input_doc, DXState* dx, LinearAllocatorPool* allocator) {
+    auto keep_shapes = HashMapEx<PathId, bool, LinearAllocatorPool>(input_doc->pipeline_shapes.Length() * 2, allocator);
+
+    for (auto i=0; i<input_doc->pipeline_shapes.tags.reverse_tags.Capacity(); i++) {
+        auto slot = input_doc->pipeline_shapes.tags.reverse_tags.Slot(i);
+        for (auto j=0; j<slot->Length(); j++) {
+            auto entry  = slot->Get(j);
+
+            String tag  = entry.key;
+            if (FindTag(&this->tags, &tag)) {
+                DynamicArray<PathId> shapes = entry.value;
+                for (auto k=0; k<shapes.Length(); k++) {
+                    PathId id = shapes.Get(k);
+
+                    if(!keep_shapes.GetPtr(id)) {
+                        keep_shapes.Set(id, true, allocator);
+                    }
+                }
+            }
+        }
+    }
+
+    for (int i=0; i<input_doc->pipeline_shapes.index.Capacity(); i++) {
+        auto slot = input_doc->pipeline_shapes.index.Slot(i);
+        for (int j=0; j<slot->Length(); j++) {
+            auto entry = slot->Get(j);
+            PathId id = entry.key;
+            if(!keep_shapes.GetPtr(id)) {
+                input_doc->pipeline_shapes.DeletePath(id);
+
+                // Decrement j so we can process the element that was moved into the current slot in place of the deleted one
+                j--;
+            }
+        }
+    }
 }
 
 void Pipeline::RunBinPacking(Document* input_doc, DXState *dx, LinearAllocatorPool* allocator) {
@@ -45,7 +88,7 @@ void Pipeline::RunBinPacking(Document* input_doc, DXState *dx, LinearAllocatorPo
 
         for (auto j=0; j<bin->rects.Length(); j++) {
             Vec2Named packed_collection = bin->rects.Get(j);
-            DynamicArray<size_t>* collection = input_doc->collections.reverse_collections_index.GetPtr(packed_collection.id);
+            DynamicArray<size_t>* collection = input_doc->pipeline_shapes.collections.reverse_collections_index.GetPtr(packed_collection.id);
 
             Rect collection_bound = *collection_bounds.map.GetPtr(packed_collection.id);
             for (auto shape_idx=0; shape_idx<collection->Length(); shape_idx++) {
@@ -72,14 +115,14 @@ void Pipeline::RunBinPacking(Document* input_doc, DXState *dx, LinearAllocatorPo
 }
 
 CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocator) {
-    size_t collection_count = doc->collections.reverse_collections_index.Length();
+    size_t collection_count = doc->pipeline_shapes.collections.reverse_collections_index.Length();
     CollectionBounds bounds = {
         DynamicArrayEx<RectNamed, LinearAllocatorPool>(collection_count, allocator),
         HashMapEx<size_t, Rect, LinearAllocatorPool>(collection_count, allocator),
     };
 
-    for (auto i=0; i<doc->collections.reverse_collections_index.Capacity(); i++) {
-        auto slot = doc->collections.reverse_collections_index.Slot(i);
+    for (auto i=0; i<doc->pipeline_shapes.collections.reverse_collections_index.Capacity(); i++) {
+        auto slot = doc->pipeline_shapes.collections.reverse_collections_index.Slot(i);
 
         for (auto j=0; j<slot->Length(); j++) {
             auto collection = slot->GetPtr(j);
@@ -89,7 +132,8 @@ CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocat
             Rect collection_bound = doc->pipeline_shapes.GetBounds(shape_id);
 
             for (auto k=1; k<collection->value.Length(); k++) {
-                size_t shape_id               = collection->value.Get(k);
+                shape_id = collection->value.Get(k);
+
                 ID2D1TransformedGeometry* geo = *doc->pipeline_shapes.GetTransformedGeometry(shape_id);
 
                 Rect shape_bound = GetBounds(geo);
@@ -104,3 +148,26 @@ CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocat
 
     return bounds;
 }
+
+// TODO: this is a horrible function and pointing out how awful the interface is for the custom data structures
+StringEx<LinearAllocatorPool>* FindTag(DynamicArrayEx<StringEx<LinearAllocatorPool>, LinearAllocatorPool>* haystack, String* needle) {
+    for (auto i=0; i<haystack->Length(); i++) {
+        StringEx<LinearAllocatorPool> entry = haystack->Get(i);
+        if (entry.chars.Length() != needle->strex.chars.Length()) {
+            continue;
+        }
+
+        bool was_equal = true;
+        for (auto j=0; j<entry.chars.Length(); j++) {
+           if (entry.Data()[j] != needle->Data()[j]) {
+               was_equal = false;
+           }
+        }
+
+        if (was_equal) {
+            return haystack->GetPtr(i);
+        }
+    }
+
+    return NULL;
+ }

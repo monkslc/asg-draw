@@ -184,6 +184,8 @@ Paths::Paths(size_t estimated_cap) :
     low_fidelities(DynamicArray<ID2D1GeometryRealization*>(estimated_cap)),
     index(HashMap<PathId, size_t>(estimated_cap)),
     reverse_index(DynamicArray<PathId>(estimated_cap)),
+    collections(Collections(estimated_cap)),
+    tags(Tags(estimated_cap)),
     next_id(0) {};
 
 void Paths::FreeAndReleaseResources() {
@@ -197,8 +199,11 @@ void Paths::Free() {
     this->low_fidelities.Free();
     this->index.Free();
     this->reverse_index.Free();
+
+    // TODO: collections and tags need to be released, come back to this after the restructure
 }
 
+// TODO: release geometry
 void Paths::ReleaseResources() {
     this->transformed_geometries.ReleaseAll();
     this->low_fidelities.ReleaseAll();
@@ -225,6 +230,9 @@ PathId Paths::AddPath(ShapeData path) {
     return id;
 };
 
+// This doesn't release the original geometry because for pipelines shapes we don't want to release it
+// Probably needs to be a different name or rethought
+// TODO: change to removepath
 void Paths::DeletePath(PathId id) {
     size_t index = *this->index.GetPtr(id);
     this->index.Remove(id);
@@ -240,11 +248,12 @@ void Paths::DeletePath(PathId id) {
     this->shapes                .array.length--;
     this->transformed_geometries.array.length--;
     this->low_fidelities        .array.length--;
+    this->reverse_index         .array.length--;
 
     // If the arrays had more than one item and that was not the last item
     // we move the item that was at the end into the old paths position
     // and update the indexes for it
-    size_t moved_item_index = this->shapes.Length() - 1;
+    size_t moved_item_index = this->shapes.Length();
     if (index < moved_item_index) {
         PathId moved_item_id = this->reverse_index.Get(moved_item_index);
 
@@ -255,10 +264,13 @@ void Paths::DeletePath(PathId id) {
 
         this->index.Set(moved_item_id, index);
     }
+
+    this->tags.RemovePath(id);
+    this->collections.RemovePath(id);
 }
 
 size_t Paths::Length() {
-    // Since all fo the arrays should be the same size arbitrarily pick one of them for the length
+    // Since all of the arrays should be the same size arbitrarily pick one of them for the length
     return this->shapes.Length();
 }
 
@@ -349,6 +361,8 @@ Paths Paths::Clone() {
         low_fidelities,
         this->index.Clone(),
         this->reverse_index.Clone(),
+        this->collections.Clone(),
+        this->tags.Clone(),
         this->next_id
     );
 
@@ -359,6 +373,14 @@ Collections::Collections(size_t estimated_shapes) :
     collections(HashMap<PathId, CollectionId>(estimated_shapes)),
     reverse_collections_index(HashMap<CollectionId, DynamicArray<PathId>>(estimated_shapes)),
     next_id(0) {};
+
+Collections::Collections(
+    HashMap<PathId, CollectionId> collections,
+    HashMap<CollectionId, DynamicArray<PathId>> reverse_collections_index,
+    CollectionId next_id
+) : collections(collections),
+    reverse_collections_index(reverse_collections_index),
+    next_id(next_id) {};
 
 void Collections::Free() {
     this->collections.Free();
@@ -405,9 +427,45 @@ void Collections::SetCollection(PathId shape_id, CollectionId collection_id) {
     }
 }
 
+void Collections::RemovePath(PathId id) {
+    auto collection = *this->collections.GetPtr(id);
+    this->collections.Remove(id);
+
+    auto collection_shapes = this->reverse_collections_index.GetPtr(collection);
+    collection_shapes->Remove(id);
+
+    if (!collection_shapes->Length()) {
+        collection_shapes->Free();
+        this->reverse_collections_index.Remove(collection);
+    }
+}
+
+Collections Collections::Clone() {
+    auto reverse_collections_index_clone = this->reverse_collections_index.Clone();
+    for (auto i=0; i<reverse_collections_index_clone.Capacity(); i++) {
+        auto* slot = reverse_collections_index_clone.Slot(i);
+        auto slot_data = slot->data;
+        for (auto j=0; j<slot->Length(); j++) {
+            slot_data[j].value = slot_data[j].value.Clone();
+        }
+    }
+
+    return Collections(
+        this->collections.Clone(),
+        reverse_collections_index_clone,
+        this->next_id
+    );
+}
+
 Tags::Tags(size_t estimated_shapes) :
     tags(HashMap<PathId, DynamicArray<String>>(estimated_shapes)),
     reverse_tags(HashMap<String, DynamicArray<PathId>>(estimated_shapes)) {};
+
+Tags::Tags(
+    HashMap<PathId, DynamicArray<String>> tags,
+    HashMap<String, DynamicArray<PathId>> reverse_tags
+) : tags(tags),
+    reverse_tags(reverse_tags) {};
 
 void Tags::Free() {
     this->tags.FreeValues();
@@ -429,6 +487,51 @@ void Tags::AddTag(size_t shape_id, char* tag_cstr) {
 
     DynamicArray<size_t>* shape_ids = this->reverse_tags.GetPtrOrDefault(tag);
     shape_ids->Push(shape_id);
+}
+
+// Clone does not clone the string since we'll be moving to an id for the string soon
+Tags Tags::Clone() {
+    HashMap<PathId, DynamicArray<String>> tags_clone = this->tags.Clone();
+    for (auto i=0; i<tags_clone.Capacity(); i++) {
+        auto slot = tags_clone.Slot(i);
+        for (auto j=0; j<slot->Length(); j++) {
+            auto* data = slot->GetPtr(j);
+            data->value = data->value.Clone();
+        }
+    }
+
+    HashMap<String, DynamicArray<PathId>> reverse_tags_clone = this->reverse_tags.Clone();
+    for (auto i=0; i<reverse_tags_clone.Capacity(); i++) {
+        auto slot = reverse_tags_clone.Slot(i);
+        for (auto j=0; j<slot->Length(); j++) {
+            auto* data = slot->GetPtr(j);
+            data->value = data->value.Clone();
+        }
+    }
+
+    return Tags(
+        tags_clone,
+        reverse_tags_clone
+    );
+}
+
+void Tags::RemovePath(PathId id) {
+    auto path_tags = this->tags.GetPtr(id);
+
+    if (path_tags) {
+        for (auto i=0; i<path_tags->Length(); i++) {
+            auto tag = path_tags->Get(i);
+            auto reverse_tag_lookup = this->reverse_tags.GetPtr(tag);
+            reverse_tag_lookup->Remove(id);
+            if (!reverse_tag_lookup->Length()) {
+                reverse_tag_lookup->Free();
+                tag.Free();
+            }
+        }
+
+        path_tags->Free();
+        this->tags.Remove(id);
+    }
 }
 
 Shape::Shape(ID2D1TransformedGeometry* geometry, Transformation transform) : geometry(geometry), transform(transform) {};
@@ -536,10 +639,6 @@ Rect GetBounds(ID2D1TransformedGeometry* geo) {
 constexpr float kFloatLowFidelity = 1.0f;
 void CreateHighFidelityRealization(ShapeData* shape, ID2D1TransformedGeometry** transformed_geometry, DXState *dx) {
     HRESULT hr;
-
-    if((*transformed_geometry)) {
-        (*transformed_geometry)->Release();
-    }
 
     hr = dx->factory->CreateTransformedGeometry(shape->geometry, shape->TransformMatrix(), transformed_geometry);
     ExitOnFailure(hr);

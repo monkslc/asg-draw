@@ -6,8 +6,9 @@ class Pipeline {
     DynamicArrayEx<StringEx<LinearAllocatorPool>, LinearAllocatorPool> tags;
     Pipeline() {};
 
-    void Run(Document* input_doc, DXState *dx, LinearAllocatorPool* allocator);
-    void RunBinPacking(Document* input_doc, DXState *dx, LinearAllocatorPool* allocator);
+    void Run(Document* input_doc, DXState* dx, LinearAllocatorPool* allocator);
+    void RunBinPacking(Document* input_doc, DXState* dx, LinearAllocatorPool* allocator);
+    void RunFilter(Document* input_doc, DXState* dx, LinearAllocatorPool* allocator);
 };
 
 struct CollectionBounds {
@@ -18,3 +19,5 @@ CollectionBounds GetCollectionBounds(
     Document *doc,
     LinearAllocatorPool *allocator
 );
+
+StringEx<LinearAllocatorPool>* FindTag(DynamicArrayEx<StringEx<LinearAllocatorPool>, LinearAllocatorPool>* haystack, String* needle);

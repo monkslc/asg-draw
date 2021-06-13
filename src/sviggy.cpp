@@ -264,6 +264,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         p.bins.Push(Vec2Many(Vec2(48, 24), kInfinity), &allocator);
 
                         p.tags.Push(StringEx<LinearAllocatorPool>((char*)"Bound", &allocator), &allocator);
+                        p.tags.Push(StringEx<LinearAllocatorPool>((char*)"Text", &allocator), &allocator);
 
                         p.Run(app.ActiveDoc(), &dxstate, &allocator);
 

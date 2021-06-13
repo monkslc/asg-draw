@@ -41,8 +41,6 @@ void Application::ActivateDoc(size_t index) {
 
 Document::Document(size_t estimated_shapes) :
     paths(Paths(estimated_shapes)),
-    collections(Collections(estimated_shapes)),
-    tags(Tags(estimated_shapes)),
 
     texts(DynamicArray<Text>(10)),
 
@@ -54,9 +52,6 @@ void Document::Free() {
     this->texts.FreeAll();
 
     this->paths.FreeAndReleaseResources();
-    this->collections.Free();
-    this->tags.Free();
-
     this->pipeline_shapes.Free();
 
     this->active_shapes.Free();
@@ -65,7 +60,7 @@ void Document::Free() {
 void Document::AddNewPath(ShapeData p) {
     PathId id = this->paths.AddPath(p);
 
-    this->collections.CreateCollectionForShape(id);
+    this->paths.collections.CreateCollectionForShape(id);
 }
 
 void Document::SelectShapes(Vec2 mousedown, Vec2 mouseup) {
@@ -130,10 +125,10 @@ void Document::TogglePipelineView() {
 }
 
 void Document::CollectActiveShapes() {
-    size_t collection = this->collections.NextId();
+    size_t collection = this->paths.collections.NextId();
     for (auto i=0; i<this->active_shapes.Length(); i++) {
         ActiveShape shape = this->active_shapes.Get(i);
-        this->collections.SetCollection(shape.id, collection);
+        this->paths.collections.SetCollection(shape.id, collection);
     }
 }
 
@@ -163,7 +158,7 @@ void Document::AutoCollect() {
         for (auto j=search_from; j<new_collections.Length(); j++) {
             RectNamed* collection = new_collections.GetPtr(j);
             if (collection->rect.Contains(&shape->rect)) {
-                this->collections.SetCollection(shape->id, collection->id);
+                this->paths.collections.SetCollection(shape->id, collection->id);
                 found_fit = true;
                 break;
             }
@@ -177,8 +172,8 @@ void Document::AutoCollect() {
         }
 
         if (!found_fit) {
-            size_t next_collection = this->collections.NextId();
-            this->collections.SetCollection(shape->id, next_collection);
+            size_t next_collection = this->paths.collections.NextId();
+            this->paths.collections.SetCollection(shape->id, next_collection);
             new_collections.Push(RectNamed(shape->rect, next_collection), &allocator);
         }
     }

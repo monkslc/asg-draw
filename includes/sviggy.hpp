@@ -180,6 +180,49 @@ class PathBuilder {
     ShapeData BuildPath(DXState *dx);
 };
 
+// TODO: map tags to a number. It'll make it faster to compare and then we don't have to store the string twice
+class Tags {
+    public:
+    HashMap<PathId, DynamicArray<String>> tags; // maps a shape id to all of its tags
+    HashMap<String, DynamicArray<PathId>> reverse_tags; // maps a tag to every shape that contains that tag
+    Tags(size_t estimated_shapes);
+
+    // Constructor for clone
+    Tags(HashMap<PathId, DynamicArray<String>> tags, HashMap<String, DynamicArray<PathId>> reverse_tags);
+
+    void Free();
+
+    DynamicArray<String>* GetTags(PathId shape_id);
+    void AddTag(size_t shape_id, char* tag_cstr);
+
+    Tags Clone();
+
+    void RemovePath(PathId id);
+};
+
+class Collections {
+    public:
+    HashMap<PathId, CollectionId> collections;
+    HashMap<CollectionId, DynamicArray<PathId>> reverse_collections_index;
+    CollectionId next_id;
+    Collections(size_t estimated_shapes);
+
+    // Clone constructor
+    Collections(HashMap<PathId, CollectionId> collections, HashMap<CollectionId, DynamicArray<PathId>> reverse_collections_index, CollectionId next_id);
+
+    void Free();
+
+    CollectionId NextId();
+    CollectionId CreateCollectionForShape(PathId shape_id);
+    CollectionId GetCollectionId(PathId shape_id);
+
+    void SetCollection(PathId shape_id, CollectionId collection_id);
+
+    void RemovePath(PathId id);
+
+    Collections Clone();
+};
+
 class Paths {
     public:
     DynamicArray<ShapeData>                 shapes;
@@ -187,6 +230,8 @@ class Paths {
     DynamicArray<ID2D1GeometryRealization*> low_fidelities; // Entries can be null before being rendered. Entries are always null for pipeline shapes
     HashMap<PathId, size_t>                 index; // maps path id to index in one of the above arrays
     DynamicArray<PathId>                    reverse_index; // maps an index in one of the above arrays to a path id
+    Collections                             collections;
+    Tags                                    tags;
     PathId                                  next_id;
     Paths(size_t estimated_cap);
 
@@ -197,12 +242,16 @@ class Paths {
         DynamicArray<ID2D1GeometryRealization*> low_fidelities,
         HashMap<PathId, size_t> index,
         DynamicArray<PathId> reverse_index,
+        Collections collections,
+        Tags tags,
         PathId next_id
     ) : shapes(shapes),
         transformed_geometries(transformed_geometries),
         low_fidelities(low_fidelities),
         index(index),
         reverse_index(reverse_index),
+        collections(collections),
+        tags(tags),
         next_id(next_id) {};
 
     void FreeAndReleaseResources();
@@ -230,35 +279,6 @@ class Paths {
     void SetTransform(PathId id, Transformation transform);
 
     Paths Clone();
-};
-
-class Collections {
-    public:
-    HashMap<PathId, CollectionId> collections;
-    HashMap<CollectionId, DynamicArray<PathId>> reverse_collections_index;
-    CollectionId next_id;
-    Collections(size_t estimated_shapes);
-
-    void Free();
-
-    CollectionId NextId();
-    CollectionId CreateCollectionForShape(PathId shape_id);
-    CollectionId GetCollectionId(PathId shape_id);
-
-    void SetCollection(PathId shape_id, CollectionId collection_id);
-};
-
-// TODO: map tags to a number. It'll make it faster to compare and then we don't have to store the string twice
-class Tags {
-    public:
-    HashMap<PathId, DynamicArray<String>> tags; // maps a shape id to all of its tags
-    HashMap<String, DynamicArray<PathId>> reverse_tags; // maps a tag to every shape that contains that tag
-    Tags(size_t estimated_shapes);
-
-    void Free();
-
-    DynamicArray<String>* GetTags(PathId shape_id);
-    void AddTag(size_t shape_id, char* tag_cstr);
 };
 
 enum class ShapeType {
@@ -305,8 +325,6 @@ class Document {
     DynamicArray<Text> texts;
 
     Paths paths;
-    Collections collections;
-    Tags tags;
 
     DynamicArray<ActiveShape> active_shapes;
 
@@ -323,6 +341,7 @@ class Document {
     void Free();
 
     void AddNewPath(ShapeData p);
+    void DeletePath(PathId id);
 
     void SelectShape(Vec2 screen_pos);
     void SelectShapes(Vec2 start, Vec2 end);
