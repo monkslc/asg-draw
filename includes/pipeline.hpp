@@ -3,7 +3,7 @@
 class Pipeline {
     public:
     DynamicArrayEx<Vec2Many, LinearAllocatorPool> bins;
-    DynamicArrayEx<StringEx<LinearAllocatorPool>, LinearAllocatorPool> tags;
+    DynamicArrayEx<TagId, LinearAllocatorPool> tags;
     Pipeline() {};
 
     void Run(Document* input_doc, DXState* dx, LinearAllocatorPool* allocator);
@@ -19,5 +19,3 @@ CollectionBounds GetCollectionBounds(
     Document *doc,
     LinearAllocatorPool *allocator
 );
-
-StringEx<LinearAllocatorPool>* FindTag(DynamicArrayEx<StringEx<LinearAllocatorPool>, LinearAllocatorPool>* haystack, String* needle);

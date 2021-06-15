@@ -151,6 +151,7 @@ constexpr float kCounterClockwise = 0.0f;
 
 typedef size_t PathId;
 typedef size_t CollectionId;
+typedef size_t TagId;
 
 class ShapeData {
     public:
@@ -180,20 +181,37 @@ class PathBuilder {
     ShapeData BuildPath(DXState *dx);
 };
 
+// The TagGod is responsible for mapping the tag strings to an id. In this case the TagId is just its index in the tags array
+// Since there are a limited number of tags, that never get modified (only created + destroyed) it makes sense to map each number
+// to which is easier to pass around / compare. It should never be necessary to delete a tag, since there's a limited number of them
+// so once a tag goes into a tag god, it goes in until the document is closed which allows us to avoid reference counting the tags
+class TagGod {
+    public:
+    DynamicArray<String> tags;
+    HashMap<String, TagId> index;
+    TagGod();
+
+    TagId GetTagId(String tag);
+
+    String GetTag(TagId id);
+
+    // TODO: add a free method
+};
+
 // TODO: map tags to a number. It'll make it faster to compare and then we don't have to store the string twice
 class Tags {
     public:
-    HashMap<PathId, DynamicArray<String>> tags; // maps a shape id to all of its tags
-    HashMap<String, DynamicArray<PathId>> reverse_tags; // maps a tag to every shape that contains that tag
+    HashMap<PathId, DynamicArray<TagId>> tags; // maps a shape id to all of its tags
+    HashMap<TagId, DynamicArray<PathId>> reverse_tags; // maps a tag to every shape that contains that tag
     Tags(size_t estimated_shapes);
 
     // Constructor for clone
-    Tags(HashMap<PathId, DynamicArray<String>> tags, HashMap<String, DynamicArray<PathId>> reverse_tags);
+    Tags(HashMap<PathId, DynamicArray<TagId>> tags, HashMap<TagId, DynamicArray<PathId>> reverse_tags);
 
     void Free();
 
-    DynamicArray<String>* GetTags(PathId shape_id);
-    void AddTag(size_t shape_id, char* tag_cstr);
+    DynamicArray<TagId>* GetTags(PathId shape_id);
+    void AssignTag(PathId shape_id, TagId id);
 
     Tags Clone();
 
@@ -323,10 +341,10 @@ class Application;
 class Document {
     public:
     DynamicArray<Text> texts;
-
     Paths paths;
-
     DynamicArray<ActiveShape> active_shapes;
+
+    TagGod tag_god;
 
     // We reuse the Paths class for pipeline_shapes but we ignore the low
     // fidelity realizations because the pipeline shapes change so often
@@ -341,7 +359,7 @@ class Document {
     void Free();
 
     void AddNewPath(ShapeData p);
-    void DeletePath(PathId id);
+    void AssignTag(PathId id, String tag);
 
     void SelectShape(Vec2 screen_pos);
     void SelectShapes(Vec2 start, Vec2 end);

@@ -263,8 +263,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
                         p.bins.Push(Vec2Many(Vec2(48, 24), kInfinity), &allocator);
 
-                        p.tags.Push(StringEx<LinearAllocatorPool>((char*)"Bound", &allocator), &allocator);
-                        p.tags.Push(StringEx<LinearAllocatorPool>((char*)"Text", &allocator), &allocator);
+                        // Right now these are strings because we can't compare a String to a StringEx currently but hopefully
+                        // we come up with something better in the future
+                        String bound_tag = String((char*) "Bound");
+                        String text_tag  = String((char*) "Text");
+
+                        TagId bound_id = app.ActiveDoc()->tag_god.GetTagId(bound_tag);
+                        TagId text_id  = app.ActiveDoc()->tag_god.GetTagId(text_tag);
+
+                        p.tags.Push(bound_id, &allocator);
+                        p.tags.Push(text_id,  &allocator);
 
                         p.Run(app.ActiveDoc(), &dxstate, &allocator);
 

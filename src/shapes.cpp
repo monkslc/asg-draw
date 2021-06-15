@@ -458,12 +458,12 @@ Collections Collections::Clone() {
 }
 
 Tags::Tags(size_t estimated_shapes) :
-    tags(HashMap<PathId, DynamicArray<String>>(estimated_shapes)),
-    reverse_tags(HashMap<String, DynamicArray<PathId>>(estimated_shapes)) {};
+    tags(HashMap<PathId, DynamicArray<TagId>>(estimated_shapes)),
+    reverse_tags(HashMap<TagId, DynamicArray<PathId>>(estimated_shapes)) {};
 
 Tags::Tags(
-    HashMap<PathId, DynamicArray<String>> tags,
-    HashMap<String, DynamicArray<PathId>> reverse_tags
+    HashMap<PathId, DynamicArray<TagId>> tags,
+    HashMap<TagId, DynamicArray<PathId>> reverse_tags
 ) : tags(tags),
     reverse_tags(reverse_tags) {};
 
@@ -475,23 +475,21 @@ void Tags::Free() {
     this->reverse_tags.Free();
 }
 
-DynamicArray<String>* Tags::GetTags(PathId shape_id) {
+DynamicArray<TagId>* Tags::GetTags(PathId shape_id) {
     return this->tags.GetPtr(shape_id);
 }
 
-void Tags::AddTag(size_t shape_id, char* tag_cstr) {
-    String tag = String(tag_cstr);
+void Tags::AssignTag(PathId shape_id, TagId tag_id) {
+    DynamicArray<TagId>* tags = this->tags.GetPtrOrDefault(shape_id);
+    tags->Push(tag_id);
 
-    DynamicArray<String>* tags = this->tags.GetPtrOrDefault(shape_id);
-    tags->Push(tag);
-
-    DynamicArray<size_t>* shape_ids = this->reverse_tags.GetPtrOrDefault(tag);
+    DynamicArray<size_t>* shape_ids = this->reverse_tags.GetPtrOrDefault(tag_id);
     shape_ids->Push(shape_id);
 }
 
 // Clone does not clone the string since we'll be moving to an id for the string soon
 Tags Tags::Clone() {
-    HashMap<PathId, DynamicArray<String>> tags_clone = this->tags.Clone();
+    HashMap<PathId, DynamicArray<TagId>> tags_clone = this->tags.Clone();
     for (auto i=0; i<tags_clone.Capacity(); i++) {
         auto slot = tags_clone.Slot(i);
         for (auto j=0; j<slot->Length(); j++) {
@@ -500,7 +498,7 @@ Tags Tags::Clone() {
         }
     }
 
-    HashMap<String, DynamicArray<PathId>> reverse_tags_clone = this->reverse_tags.Clone();
+    HashMap<TagId, DynamicArray<PathId>> reverse_tags_clone = this->reverse_tags.Clone();
     for (auto i=0; i<reverse_tags_clone.Capacity(); i++) {
         auto slot = reverse_tags_clone.Slot(i);
         for (auto j=0; j<slot->Length(); j++) {

@@ -63,6 +63,12 @@ void Document::AddNewPath(ShapeData p) {
     this->paths.collections.CreateCollectionForShape(id);
 }
 
+void Document::AssignTag(PathId id, String tag) {
+    TagId tag_id = this->tag_god.GetTagId(tag);
+
+    this->paths.tags.AssignTag(id, tag_id);
+}
+
 void Document::SelectShapes(Vec2 mousedown, Vec2 mouseup) {
     this->active_shapes.Clear();
 
@@ -225,4 +231,29 @@ D2D1::Matrix3x2F View::ScreenToDocumentMat() {
     D2D1::Matrix3x2F mat = this->DocumentToScreenMat();
     mat.Invert();
     return mat;
+}
+
+// Default tag capacity is pretty arbitrary at this point
+constexpr size_t kDefaultTagCapacity = 1000;
+TagGod::TagGod() :
+    tags(DynamicArray<String>(kDefaultTagCapacity)),
+    index(HashMap<String, TagId>(kDefaultTagCapacity)) {}
+
+// Gets the id for a tag or creates a new tag id for it if it is not currently
+// in its index
+TagId TagGod::GetTagId(String tag) {
+    TagId* id = this->index.GetPtr(tag);
+    if (id) {
+        return *id;
+    }
+
+    TagId new_id = this->tags.Length();
+    this->index.Set(tag, new_id);
+    this->tags.Push(tag);
+
+    return new_id;
+}
+
+String TagGod::GetTag(TagId id) {
+    return this->tags.Get(id);
 }

@@ -48,8 +48,8 @@ void Pipeline::RunFilter(Document* input_doc, DXState* dx, LinearAllocatorPool* 
         for (auto j=0; j<slot->Length(); j++) {
             auto entry  = slot->Get(j);
 
-            String tag  = entry.key;
-            if (FindTag(&this->tags, &tag)) {
+            TagId tag  = entry.key;
+            if (this->tags.Find(tag)) {
                 DynamicArray<PathId> shapes = entry.value;
                 for (auto k=0; k<shapes.Length(); k++) {
                     PathId id = shapes.Get(k);
@@ -148,26 +148,3 @@ CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocat
 
     return bounds;
 }
-
-// TODO: this is a horrible function and pointing out how awful the interface is for the custom data structures
-StringEx<LinearAllocatorPool>* FindTag(DynamicArrayEx<StringEx<LinearAllocatorPool>, LinearAllocatorPool>* haystack, String* needle) {
-    for (auto i=0; i<haystack->Length(); i++) {
-        StringEx<LinearAllocatorPool> entry = haystack->Get(i);
-        if (entry.chars.Length() != needle->strex.chars.Length()) {
-            continue;
-        }
-
-        bool was_equal = true;
-        for (auto j=0; j<entry.chars.Length(); j++) {
-           if (entry.Data()[j] != needle->Data()[j]) {
-               was_equal = false;
-           }
-        }
-
-        if (was_equal) {
-            return haystack->GetPtr(i);
-        }
-    }
-
-    return NULL;
- }

@@ -505,9 +505,9 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             DynamicArray<TagId>* tags = doc->paths.tags.GetTags(shape.id);
 
             if (tags) {
-                for (auto i=0; i<tags->Length(); i++) {
-                    String *tag = tags->GetPtr(i);
-                    ImGui::Text("%s", tag->CStr());
+                for (auto &tag_id : *tags) {
+                    String tag = doc->tag_god.GetTag(tag_id);
+                    ImGui::Text("%s", tag.CStr());
                 }
             }
 
