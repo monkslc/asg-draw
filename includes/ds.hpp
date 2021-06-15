@@ -176,7 +176,7 @@ class DynamicArrayEx {
     }
 
     T* End() {
-        return &this->data[this->length];
+        return this->data + this->length;
     }
 
     size_t Length() {
@@ -255,8 +255,8 @@ class DynamicArrayEx {
         friend bool operator!= (const Iterator& a, const Iterator& b) { return a.ptr != b.ptr; }
     };
 
-    Iterator begin() { return Iterator(this->data); };
-    Iterator end() { return Iterator(this->data + this->length); };
+    Iterator begin() { return Iterator(this->Data()); };
+    Iterator end() { return Iterator(this->End()); };
 };
 
 template <typename T>
@@ -387,8 +387,8 @@ class DynamicArray {
         friend bool operator!= (const Iterator& a, const Iterator& b) { return a.ptr != b.ptr; }
     };
 
-    Iterator begin() { return Iterator(this->array.data); };
-    Iterator end() { return Iterator(this->array.data + this->array.length); };
+    Iterator begin() { return Iterator(this->Data()); };
+    Iterator end() { return Iterator(this->End()); };
 };
 
 constexpr size_t kDefaultPoolSize = 5;
