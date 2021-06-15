@@ -326,26 +326,20 @@ void DXState::RenderPaths(Document *doc) {
 }
 
 void DXState::RenderPathsLowFidelity(Paths *paths) {
-    ID2D1GeometryRealization** data = paths->low_fidelities.Data();
-    for (auto i=0; i<paths->Length(); i++) {
-        this->d2_device_context->DrawGeometryRealization(*data, this->blackBrush);
-        data++;
+    for (auto &path : paths->low_fidelities) {
+        this->d2_device_context->DrawGeometryRealization(path, this->blackBrush);
     }
 }
 
 void DXState::RenderPathsHighFidelity(Paths *paths) {
-    ID2D1TransformedGeometry** data = paths->transformed_geometries.Data();
-    for (auto i=0; i<paths->Length(); i++) {
-        this->d2_device_context->DrawGeometry(*data, this->blackBrush, kHairline);
-        data++;
+    for (auto& path : paths->transformed_geometries) {
+        this->d2_device_context->DrawGeometry(path, this->blackBrush, kHairline);
     }
 }
 
 void DXState::RenderText(Document *doc) {
-    for (auto i=0; i<doc->texts.Length(); i++) {
-        Text* text = doc->texts.GetPtr(i);
-
-        this->d2_device_context->DrawTextLayout(text->pos.D2Point(), text->layout, this->blackBrush, D2D1_DRAW_TEXT_OPTIONS_NONE);
+    for (auto &text : doc->texts) {
+        this->d2_device_context->DrawTextLayout(text.pos.D2Point(), text.layout, this->blackBrush, D2D1_DRAW_TEXT_OPTIONS_NONE);
     }
 }
 
@@ -485,32 +479,30 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
 
     ImGui::Begin("Active Selection");
 
-    for (auto i=0; i<doc->active_shapes.Length(); i++) {
-        ActiveShape *shape = doc->active_shapes.GetPtr(i);
-
-        if (ImGui::TreeNode(shape, "Shape %zu\n", shape->id)) {
-            ShapeData* shape_data     = doc->paths.GetShapeData(shape->id);
+    for (auto &shape : doc->active_shapes) {
+        if (ImGui::TreeNode(&shape, "Shape %zu\n", shape.id)) {
+            ShapeData* shape_data     = doc->paths.GetShapeData(shape.id);
             Transformation* transform = &shape_data->transform;
 
-            size_t collection = doc->paths.collections.GetCollectionId(shape->id);
+            size_t collection = doc->paths.collections.GetCollectionId(shape.id);
 
-            Rect bound = doc->paths.GetBounds(shape->id);
+            Rect bound = doc->paths.GetBounds(shape.id);
 
-            ImGui::Text("Shape Id: %zu", shape->id);
+            ImGui::Text("Shape Id: %zu", shape.id);
             ImGui::Text("Collection: %zu", collection);
 
             ImGui::Text("Pos: (%.3f, %.3f)", bound.Left(), bound.Top());
             ImGui::Text("Size: (%.3f, %.3f)", bound.Width(), bound.Height());
 
-            if(ImGui::DragFloat("Translation x", &transform->translation.x, 0.125)) doc->paths.RealizeGeometry(this, shape->id);
-            if(ImGui::DragFloat("Translation y", &transform->translation.y, 0.125)) doc->paths.RealizeGeometry(this, shape->id);
-            if(ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125)) doc->paths.RealizeGeometry(this, shape->id);
-            if(ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125)) doc->paths.RealizeGeometry(this, shape->id);
+            if(ImGui::DragFloat("Translation x", &transform->translation.x, 0.125)) doc->paths.RealizeGeometry(this, shape.id);
+            if(ImGui::DragFloat("Translation y", &transform->translation.y, 0.125)) doc->paths.RealizeGeometry(this, shape.id);
+            if(ImGui::DragFloat("Scale x",       &transform->scale.x,       0.125)) doc->paths.RealizeGeometry(this, shape.id);
+            if(ImGui::DragFloat("Scale y",       &transform->scale.y,       0.125)) doc->paths.RealizeGeometry(this, shape.id);
 
-            if(ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f)) doc->paths.RealizeGeometry(this, shape->id);
+            if(ImGui::SliderFloat("Rotation", &transform->rotation, 0.0f, 360.0f)) doc->paths.RealizeGeometry(this, shape.id);
 
             ImGui::Text("Tags:");
-            DynamicArray<String>* tags = doc->paths.tags.GetTags(shape->id);
+            DynamicArray<TagId>* tags = doc->paths.tags.GetTags(shape.id);
 
             if (tags) {
                 for (auto i=0; i<tags->Length(); i++) {
@@ -520,7 +512,7 @@ void DXState::RenderActiveSelectionWindow(Document *doc) {
             }
 
             if (ImGui::InputText("Add Tag", tag_buf, ARRAYSIZE(tag_buf), ImGuiInputTextFlags_EnterReturnsTrue)) {
-                doc->paths.tags.AddTag(shape->id, tag_buf);
+                doc->AssignTag(shape.id, tag_buf);
                 ClearBuf(tag_buf);
             }
 

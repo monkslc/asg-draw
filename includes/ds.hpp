@@ -235,6 +235,28 @@ class DynamicArrayEx {
 
         return true;
     }
+
+    struct Iterator {
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = T;
+        using pointer           = T*;
+        using reference         = T&;
+
+        pointer ptr;
+
+        Iterator(pointer ptr) : ptr(ptr) {}
+
+        reference operator*() const { return *ptr; }
+        pointer operator->() { return ptr; }
+        Iterator& operator++() { ptr++; return *this; }
+        Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
+        friend bool operator== (const Iterator& a, const Iterator& b) { return a.ptr == b.ptr; }
+        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.ptr != b.ptr; }
+    };
+
+    Iterator begin() { return Iterator(this->data); };
+    Iterator end() { return Iterator(this->data + this->length); };
 };
 
 template <typename T>
@@ -345,6 +367,28 @@ class DynamicArray {
     bool operator==(DynamicArray<T>& rhs) {
         return this->array == rhs.array;
     }
+
+    struct Iterator {
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = T;
+        using pointer           = T*;
+        using reference         = T&;
+
+        pointer ptr;
+
+        Iterator(pointer ptr) : ptr(ptr) {}
+
+        reference operator*() const { return *ptr; }
+        pointer operator->() { return ptr; }
+        Iterator& operator++() { ptr++; return *this; }
+        Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
+        friend bool operator== (const Iterator& a, const Iterator& b) { return a.ptr == b.ptr; }
+        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.ptr != b.ptr; }
+    };
+
+    Iterator begin() { return Iterator(this->array.data); };
+    Iterator end() { return Iterator(this->array.data + this->array.length); };
 };
 
 constexpr size_t kDefaultPoolSize = 5;

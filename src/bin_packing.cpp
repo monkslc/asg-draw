@@ -17,16 +17,15 @@ DynamicArrayEx<Bin, LinearAllocatorPool> PackBins(
     auto bins            = DynamicArrayEx<Bin, LinearAllocatorPool>(10, allocator);
     auto available_areas = DynamicArrayEx<DynamicArrayEx<Rect, LinearAllocatorPool>, LinearAllocatorPool>(10, allocator);
 
-    for (auto i=0; i<rects->Length(); i++) {
-        RectNamed* rect = rects->GetPtr(i);
-        AvailableArea next_area = FindNextAvailableArea(&bins, &used_bins_count, available_bins, &available_areas, rect->rect.size, allocator);
+    for (auto& rect : *rects) {
+        AvailableArea next_area = FindNextAvailableArea(&bins, &used_bins_count, available_bins, &available_areas, rect.rect.size, allocator);
         if (!next_area.area) {
             // TODO: we should return the fact that there was an error
             printf("We ran out of space :( returning early for now\n");
             return bins;
         }
 
-        Place(&bins, &available_areas, rect, next_area, allocator);
+        Place(&bins, &available_areas, &rect, next_area, allocator);
     }
 
     // TODO: shrink bins

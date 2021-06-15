@@ -519,13 +519,11 @@ void Tags::RemovePath(PathId id) {
     auto path_tags = this->tags.GetPtr(id);
 
     if (path_tags) {
-        for (auto i=0; i<path_tags->Length(); i++) {
-            auto tag = path_tags->Get(i);
+        for (auto& tag : *path_tags) {
             auto reverse_tag_lookup = this->reverse_tags.GetPtr(tag);
             reverse_tag_lookup->Remove(id);
             if (!reverse_tag_lookup->Length()) {
                 reverse_tag_lookup->Free();
-                tag.Free();
             }
         }
 

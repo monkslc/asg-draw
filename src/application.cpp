@@ -126,8 +126,7 @@ void Document::TogglePipelineView() {
 
 void Document::CollectActiveShapes() {
     size_t collection = this->paths.collections.NextId();
-    for (auto i=0; i<this->active_shapes.Length(); i++) {
-        ActiveShape shape = this->active_shapes.Get(i);
+    for (auto& shape : this->active_shapes) {
         this->paths.collections.SetCollection(shape.id, collection);
     }
 }
@@ -151,14 +150,12 @@ void Document::AutoCollect() {
 
     auto new_collections = DynamicArrayEx<RectNamed, LinearAllocatorPool>(this->paths.Length(), &allocator);
     auto search_from = 0;
-    for (auto i=0; i<shape_bounds.Length(); i++) {
-        RectNamed *shape = shape_bounds.GetPtr(i);
-
+    for (auto &shape : shape_bounds) {
         bool found_fit = false;
         for (auto j=search_from; j<new_collections.Length(); j++) {
             RectNamed* collection = new_collections.GetPtr(j);
-            if (collection->rect.Contains(&shape->rect)) {
-                this->paths.collections.SetCollection(shape->id, collection->id);
+            if (collection->rect.Contains(&shape.rect)) {
+                this->paths.collections.SetCollection(shape.id, collection->id);
                 found_fit = true;
                 break;
             }
@@ -166,15 +163,15 @@ void Document::AutoCollect() {
             // Since the shapes are sorted, the collection will not be able to hold any of the
             // the shapes that follow if shape.left is greater than the collection right so we
             // advance search_from
-            if (shape->Left() > collection->Right()) {
+            if (shape.Left() > collection->Right()) {
                 search_from = j;
             }
         }
 
         if (!found_fit) {
             size_t next_collection = this->paths.collections.NextId();
-            this->paths.collections.SetCollection(shape->id, next_collection);
-            new_collections.Push(RectNamed(shape->rect, next_collection), &allocator);
+            this->paths.collections.SetCollection(shape.id, next_collection);
+            new_collections.Push(RectNamed(shape.rect, next_collection), &allocator);
         }
     }
 
