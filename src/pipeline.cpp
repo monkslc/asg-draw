@@ -13,7 +13,6 @@ void Pipeline::Run(Document* input_doc, DXState *dx, LinearAllocatorPool* alloca
     // There's a performance gain to be had by resuing the memory instead
     // of blindly freeing but this works for now
 
-
     // TODO: replace free with a clear for pipeline
     // input_doc->pipeline_shapes.Free();
     input_doc->pipeline_shapes = input_doc->paths.Clone();
@@ -43,21 +42,12 @@ void Pipeline::Run(Document* input_doc, DXState *dx, LinearAllocatorPool* alloca
 void Pipeline::RunFilter(Document* input_doc, DXState* dx, LinearAllocatorPool* allocator) {
     auto keep_shapes = HashMapEx<PathId, bool, LinearAllocatorPool>(input_doc->pipeline_shapes.Length() * 2, allocator);
 
-    for (auto i=0; i<input_doc->pipeline_shapes.tags.reverse_tags.Capacity(); i++) {
-        auto slot = input_doc->pipeline_shapes.tags.reverse_tags.Slot(i);
-        for (auto j=0; j<slot->Length(); j++) {
-            auto entry  = slot->Get(j);
-
-            TagId tag  = entry.key;
-            if (this->tags.Find(tag)) {
-                DynamicArray<PathId> shapes = entry.value;
-                for (auto k=0; k<shapes.Length(); k++) {
-                    PathId id = shapes.Get(k);
-
-                    if(!keep_shapes.GetPtr(id)) {
-                        keep_shapes.Set(id, true, allocator);
-                    }
-                }
+    for (auto &entry : input_doc->pipeline_shapes.tags.reverse_tags) {
+        TagId tag  = entry.key;
+        if (this->tags.Find(tag)) {
+            DynamicArray<PathId> shapes = entry.value;
+            for (auto &id : shapes) {
+                keep_shapes.Set(id, true, allocator);
             }
         }
     }
@@ -121,29 +111,25 @@ CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocat
         HashMapEx<size_t, Rect, LinearAllocatorPool>(collection_count, allocator),
     };
 
-    for (auto i=0; i<doc->pipeline_shapes.collections.reverse_collections_index.Capacity(); i++) {
-        auto slot = doc->pipeline_shapes.collections.reverse_collections_index.Slot(i);
+    for (auto &entry : doc->pipeline_shapes.collections.reverse_collections_index) {
+        CollectionId collection     = entry.key;
+        DynamicArray<PathId> shapes = entry.value;
 
-        for (auto j=0; j<slot->Length(); j++) {
-            auto collection = slot->GetPtr(j);
+        size_t shape_id       = shapes.Get(0);
+        Rect collection_bound = doc->pipeline_shapes.GetBounds(shape_id);
 
-            size_t shape_id = collection->value.Get(0);
+        for (auto k=1; k<shapes.Length(); k++) {
+            shape_id = shapes.Get(k);
 
-            Rect collection_bound = doc->pipeline_shapes.GetBounds(shape_id);
+            ID2D1TransformedGeometry* geo = *doc->pipeline_shapes.GetTransformedGeometry(shape_id);
 
-            for (auto k=1; k<collection->value.Length(); k++) {
-                shape_id = collection->value.Get(k);
+            Rect shape_bound = GetBounds(geo);
 
-                ID2D1TransformedGeometry* geo = *doc->pipeline_shapes.GetTransformedGeometry(shape_id);
-
-                Rect shape_bound = GetBounds(geo);
-
-                collection_bound = collection_bound.Union(&shape_bound);
-            }
-
-            bounds.array.Push(RectNamed(collection_bound, collection->key), allocator);
-            bounds.map.Set(collection->key, collection_bound, allocator);
+            collection_bound = collection_bound.Union(&shape_bound);
         }
+
+        bounds.array.Push(RectNamed(collection_bound, collection), allocator);
+        bounds.map.Set(collection, collection_bound, allocator);
     }
 
     return bounds;

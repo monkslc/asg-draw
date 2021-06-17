@@ -80,6 +80,26 @@ class LinearAllocator {
         }
 };
 
+template <typename T>
+struct ArrayIterator {
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type   = std::ptrdiff_t;
+    using value_type        = T;
+    using pointer           = T*;
+    using reference         = T&;
+
+    pointer ptr;
+
+    ArrayIterator(pointer ptr) : ptr(ptr) {}
+
+    reference operator*() const { return *ptr; }
+    pointer operator->() { return ptr; }
+    ArrayIterator& operator++() { ptr++; return *this; }
+    ArrayIterator operator++(int) { ArrayIterator tmp = *this; ++(*this); return tmp; }
+    friend bool operator== (const ArrayIterator& a, const ArrayIterator& b) { return a.ptr == b.ptr; }
+    friend bool operator!= (const ArrayIterator& a, const ArrayIterator& b) { return a.ptr != b.ptr; }
+};
+
 template <typename T, typename A>
 class DynamicArrayEx {
     public:
@@ -236,25 +256,7 @@ class DynamicArrayEx {
         return true;
     }
 
-    struct Iterator {
-        using iterator_category = std::forward_iterator_tag;
-        using difference_type   = std::ptrdiff_t;
-        using value_type        = T;
-        using pointer           = T*;
-        using reference         = T&;
-
-        pointer ptr;
-
-        Iterator(pointer ptr) : ptr(ptr) {}
-
-        reference operator*() const { return *ptr; }
-        pointer operator->() { return ptr; }
-        Iterator& operator++() { ptr++; return *this; }
-        Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
-        friend bool operator== (const Iterator& a, const Iterator& b) { return a.ptr == b.ptr; }
-        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.ptr != b.ptr; }
-    };
-
+    using Iterator = ArrayIterator<T>;
     Iterator begin() { return Iterator(this->Data()); };
     Iterator end() { return Iterator(this->End()); };
 };
@@ -368,27 +370,10 @@ class DynamicArray {
         return this->array == rhs.array;
     }
 
-    struct Iterator {
-        using iterator_category = std::forward_iterator_tag;
-        using difference_type   = std::ptrdiff_t;
-        using value_type        = T;
-        using pointer           = T*;
-        using reference         = T&;
 
-        pointer ptr;
-
-        Iterator(pointer ptr) : ptr(ptr) {}
-
-        reference operator*() const { return *ptr; }
-        pointer operator->() { return ptr; }
-        Iterator& operator++() { ptr++; return *this; }
-        Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
-        friend bool operator== (const Iterator& a, const Iterator& b) { return a.ptr == b.ptr; }
-        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.ptr != b.ptr; }
-    };
-
-    Iterator begin() { return Iterator(this->Data()); };
-    Iterator end() { return Iterator(this->End()); };
+    using Iterator = ArrayIterator<T>;
+    Iterator begin() { return this->array.begin(); };
+    Iterator end() { return this->array.end(); };
 };
 
 constexpr size_t kDefaultPoolSize = 5;
@@ -550,6 +535,46 @@ class KeyValuePair {
     V value;
     public:
     KeyValuePair(K key, V value) : key(key), value(value) {};
+};
+
+template<typename K, typename V>
+struct HashMapIterator {
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type   = std::ptrdiff_t;
+    using value_type        = KeyValuePair<K, V>;
+    using pointer           = KeyValuePair<K, V>*;
+    using reference         = KeyValuePair<K, V>&;
+
+    size_t slot, index;
+    DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool> *data;
+
+    HashMapIterator(
+        size_t slot,
+        size_t index,
+        DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>* data
+    ) :
+        slot(slot),
+        index(index),
+        data(data) {};
+
+    reference operator*() { return *data[slot].GetPtr(index); };
+    pointer operator->() { return data[slot].Get(index); };
+
+    HashMapIterator& operator++() {
+        // Add one to the index instead of subtracting one form the length
+        // in case the length is 0 in which case we'd wrap back to size_t max
+        if ((index + 1) < data[slot].Length()) {
+            index++;
+        } else {
+            slot++;
+            index = 0;
+        }
+
+        return *this;
+    }
+
+    friend bool operator==(const HashMapIterator& a, const HashMapIterator& b) { return a.slot == b.slot && a.index == b.index; };
+    friend bool operator!=(const HashMapIterator& a, const HashMapIterator& b) { return !(a == b); };
 };
 
 constexpr float kMaxLoad          = 0.85;
@@ -803,6 +828,10 @@ class HashMap {
     void Clear() {
         this->map.Clear();
     }
+
+    using Iterator = HashMapIterator<K, V>;
+    Iterator begin() { return this->map.begin(); };
+    Iterator end() { return this->map.end(); };
 };
 
 #endif
