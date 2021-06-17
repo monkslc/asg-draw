@@ -545,16 +545,18 @@ struct HashMapIterator {
     using pointer           = KeyValuePair<K, V>*;
     using reference         = KeyValuePair<K, V>&;
 
-    size_t slot, index;
+    size_t slot, index, capacity;
     DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool> *data;
 
     HashMapIterator(
         size_t slot,
         size_t index,
+        size_t capacity,
         DynamicArrayEx<KeyValuePair<K, V>, LinearAllocatorPool>* data
     ) :
         slot(slot),
         index(index),
+        capacity(capacity),
         data(data) {};
 
     reference operator*() { return *data[slot].GetPtr(index); };
@@ -568,6 +570,9 @@ struct HashMapIterator {
         } else {
             slot++;
             index = 0;
+            while (slot < capacity && data[slot].Length() == 0) {
+                slot++;
+            }
         }
 
         return *this;
@@ -748,6 +753,17 @@ class HashMapEx {
            slot->Clear();
        }
     }
+
+
+    using Iterator = HashMapIterator<K, V>;
+    Iterator begin() {
+        auto slot = 0;
+        while (slot < this->capacity && data[slot].Length() == 0) {
+            slot++;
+        }
+        return Iterator(slot, 0, this->capacity, this->data);
+    };
+    Iterator end() { return Iterator(this->capacity, 0, this->capacity, this->data); };
 };
 
 // TODO:
