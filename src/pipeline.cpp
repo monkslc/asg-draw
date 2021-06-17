@@ -74,10 +74,10 @@ void Pipeline::RunBinPacking(Document* input_doc, DXState *dx, LinearAllocatorPo
 
     Vec2 bin_offset = Vec2(0.0f, 0.0f);
     for (auto i=0; i<packed_bins.Length(); i++) {
-        Bin* bin = packed_bins.GetPtr(i);
+        Bin* bin = &packed_bins[i];
 
         for (auto j=0; j<bin->rects.Length(); j++) {
-            Vec2Named packed_collection = bin->rects.Get(j);
+            Vec2Named packed_collection = bin->rects[j];
             DynamicArray<size_t>* collection = input_doc->pipeline_shapes.collections.reverse_collections_index.GetPtr(packed_collection.id);
 
             Rect collection_bound = *collection_bounds.map.GetPtr(packed_collection.id);
@@ -115,11 +115,11 @@ CollectionBounds GetCollectionBounds(Document *doc, LinearAllocatorPool *allocat
         CollectionId collection     = entry.key;
         DynamicArray<PathId> shapes = entry.value;
 
-        size_t shape_id       = shapes.Get(0);
+        size_t shape_id       = shapes[0];
         Rect collection_bound = doc->pipeline_shapes.GetBounds(shape_id);
 
         for (auto k=1; k<shapes.Length(); k++) {
-            shape_id = shapes.Get(k);
+            shape_id = shapes[k];
 
             ID2D1TransformedGeometry* geo = *doc->pipeline_shapes.GetTransformedGeometry(shape_id);
 

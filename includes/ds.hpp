@@ -256,6 +256,10 @@ class DynamicArrayEx {
         return true;
     }
 
+    T& operator[](size_t i) {
+        return *this->GetPtr(i);
+    }
+
     using Iterator = ArrayIterator<T>;
     Iterator begin() { return Iterator(this->Data()); };
     Iterator end() { return Iterator(this->End()); };
@@ -370,6 +374,9 @@ class DynamicArray {
         return this->array == rhs.array;
     }
 
+    T& operator[](size_t i) {
+        return *this->GetPtr(i);
+    }
 
     using Iterator = ArrayIterator<T>;
     Iterator begin() { return this->array.begin(); };

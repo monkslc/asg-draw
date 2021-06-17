@@ -237,12 +237,12 @@ void Paths::DeletePath(PathId id) {
     size_t index = *this->index.GetPtr(id);
     this->index.Remove(id);
 
-    if (this->transformed_geometries.Get(index)) {
-        this->transformed_geometries.Get(index)->Release();
+    if (this->transformed_geometries[index]) {
+        this->transformed_geometries[index]->Release();
     }
 
-    if (this->low_fidelities.Get(index)) {
-        this->low_fidelities.Get(index)->Release();
+    if (this->low_fidelities[index]) {
+        this->low_fidelities[index]->Release();
     }
 
     this->shapes                .array.length--;
@@ -255,7 +255,7 @@ void Paths::DeletePath(PathId id) {
     // and update the indexes for it
     size_t moved_item_index = this->shapes.Length();
     if (index < moved_item_index) {
-        PathId moved_item_id = this->reverse_index.Get(moved_item_index);
+        PathId moved_item_id = this->reverse_index[moved_item_index];
 
         this->shapes                .array.data[index] = this->shapes                .array.data[moved_item_index];
         this->transformed_geometries.array.data[index] = this->transformed_geometries.array.data[moved_item_index];
@@ -278,9 +278,9 @@ size_t Paths::Length() {
 void Paths::RealizeGeometry(DXState *dx, PathId id) {
     size_t index = *this->index.GetPtr(id);
 
-    ShapeData* path                                 = this->shapes.GetPtr(index);
-    ID2D1TransformedGeometry** transformed_geometry = this->transformed_geometries.GetPtr(index);
-    ID2D1GeometryRealization** low_fidelity         = this->low_fidelities.GetPtr(index);
+    ShapeData* path                                 = &this->shapes[index];
+    ID2D1TransformedGeometry** transformed_geometry = &this->transformed_geometries[index];
+    ID2D1GeometryRealization** low_fidelity         = &this->low_fidelities[index];
 
     CreateGeometryRealizations(path, transformed_geometry, low_fidelity, dx);
 }
@@ -290,17 +290,17 @@ void Paths::RealizeGeometry(DXState *dx, PathId id) {
 void Paths::RealizeHighFidelityGeometry(DXState *dx, PathId id) {
     size_t index = *this->index.GetPtr(id);
 
-    ShapeData* path                                 = this->shapes.GetPtr(index);
-    ID2D1TransformedGeometry** transformed_geometry = this->transformed_geometries.GetPtr(index);
+    ShapeData* path                                 = &this->shapes[index];
+    ID2D1TransformedGeometry** transformed_geometry = &this->transformed_geometries[index];
 
     CreateHighFidelityRealization(path, transformed_geometry, dx);
 }
 
 void Paths::RealizeAllGeometry(DXState *dx) {
     for (auto i=0; i<this->Length(); i++) {
-        ShapeData* path                                 = this->shapes.GetPtr(i);
-        ID2D1TransformedGeometry** transformed_geometry = this->transformed_geometries.GetPtr(i);
-        ID2D1GeometryRealization** low_fidelity         = this->low_fidelities.GetPtr(i);
+        ShapeData* path                                 = &this->shapes[i];
+        ID2D1TransformedGeometry** transformed_geometry = &this->transformed_geometries[i];
+        ID2D1GeometryRealization** low_fidelity         = &this->low_fidelities[i];
 
         CreateGeometryRealizations(path, transformed_geometry, low_fidelity, dx);
     }
@@ -310,8 +310,8 @@ void Paths::RealizeAllGeometry(DXState *dx) {
 // shapes which get changed too often to do the more expensive low fidelity realization
 void Paths::RealizeAllHighFidelityGeometry(DXState *dx) {
     for (auto i=0; i<this->Length(); i++) {
-        ShapeData* path                                 = this->shapes.GetPtr(i);
-        ID2D1TransformedGeometry** transformed_geometry = this->transformed_geometries.GetPtr(i);
+        ShapeData* path                                 = &this->shapes[i];
+        ID2D1TransformedGeometry** transformed_geometry = &this->transformed_geometries[i];
 
         CreateHighFidelityRealization(path, transformed_geometry, dx);
     }
@@ -319,23 +319,23 @@ void Paths::RealizeAllHighFidelityGeometry(DXState *dx) {
 
 ShapeData* Paths::GetShapeData(PathId id) {
     size_t index = *this->index.GetPtr(id);
-    return this->shapes.GetPtr(index);
+    return &this->shapes[index];
 }
 
 ID2D1TransformedGeometry** Paths::GetTransformedGeometry(PathId id) {
     size_t index = *this->index.GetPtr(id);
-    return this->transformed_geometries.GetPtr(id);
+    return &this->transformed_geometries[index];
 }
 
 ID2D1GeometryRealization** Paths::GetLowFidelity(PathId id) {
     size_t index = *this->index.GetPtr(id);
-    return this->low_fidelities.GetPtr(id);
+    return &this->low_fidelities[index];
 }
 
 Rect Paths::GetBounds(PathId id) {
     size_t index = *this->index.GetPtr(id);
 
-    ID2D1TransformedGeometry* transformed_geo = this->transformed_geometries.Get(index);
+    ID2D1TransformedGeometry* transformed_geo = this->transformed_geometries[index];
 
     D2D1_RECT_F bounds;
     HRESULT hr = transformed_geo->GetBounds(NULL, &bounds);

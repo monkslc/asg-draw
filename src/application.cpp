@@ -20,7 +20,7 @@ void Application::Free() {
 }
 
 Document* Application::ActiveDoc() {
-    return this->documents.GetPtr(this->active_doc);
+    return &this->documents[this->active_doc];
 }
 
 View* Application::ActiveView() {
@@ -85,9 +85,9 @@ void Document::SelectShapes(Vec2 mousedown, Vec2 mouseup) {
     Rect selection = Rect(start, size);
 
     for (auto i=0; i<this->paths.Length(); i++) {
-        Rect shape_bound = GetBounds(this->paths.transformed_geometries.Get(i));
+        Rect shape_bound = GetBounds(this->paths.transformed_geometries[i]);
         if (selection.Contains(&shape_bound)) {
-            PathId path_id = this->paths.reverse_index.Get(i);
+            PathId path_id = this->paths.reverse_index[i];
             this->active_shapes.Push(ActiveShape(path_id));
         }
     }
@@ -101,14 +101,14 @@ void Document::SelectShape(Vec2 screen_pos) {
     D2D1::Matrix3x2F doc_to_screen = this->view.DocumentToScreenMat();
 
     for (auto i=0; i<this->paths.Length(); i++) {
-        ID2D1TransformedGeometry* geo = this->paths.transformed_geometries.Get(i);
+        ID2D1TransformedGeometry* geo = this->paths.transformed_geometries[i];
         BOOL contains_point;
 
         HRESULT hr = geo->StrokeContainsPoint(point, kHairline, NULL, &doc_to_screen, &contains_point);
         ExitOnFailure(hr);
 
         if (contains_point) {
-            size_t path_id = this->paths.reverse_index.Get(i);
+            size_t path_id = this->paths.reverse_index[i];
             this->active_shapes.Push(ActiveShape(path_id));
         }
     }
@@ -145,8 +145,8 @@ void Document::AutoCollect() {
 
     auto shape_bounds = DynamicArrayEx<RectNamed, LinearAllocatorPool>(this->paths.Length(), &allocator);
     for (auto i=0; i<this->paths.Length(); i++) {
-        size_t shape_id               = this->paths.reverse_index.Get(i);
-        ID2D1TransformedGeometry* geo = this->paths.transformed_geometries.Get(i);
+        size_t shape_id               = this->paths.reverse_index[i];
+        ID2D1TransformedGeometry* geo = this->paths.transformed_geometries[i];
 
         Rect bounds = GetBounds(geo);
         shape_bounds.Push(RectNamed(bounds, shape_id), &allocator);
@@ -159,7 +159,7 @@ void Document::AutoCollect() {
     for (auto &shape : shape_bounds) {
         bool found_fit = false;
         for (auto j=search_from; j<new_collections.Length(); j++) {
-            RectNamed* collection = new_collections.GetPtr(j);
+            RectNamed* collection = &new_collections[j];
             if (collection->rect.Contains(&shape.rect)) {
                 this->paths.collections.SetCollection(shape.id, collection->id);
                 found_fit = true;
@@ -255,5 +255,5 @@ TagId TagGod::GetTagId(String tag) {
 }
 
 String TagGod::GetTag(TagId id) {
-    return this->tags.Get(id);
+    return this->tags[id];
 }
