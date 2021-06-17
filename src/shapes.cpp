@@ -234,7 +234,7 @@ PathId Paths::AddPath(ShapeData path) {
 // Probably needs to be a different name or rethought
 // TODO: change to removepath
 void Paths::DeletePath(PathId id) {
-    size_t index = *this->index.GetPtr(id);
+    size_t index = this->index[id];
     this->index.Remove(id);
 
     if (this->transformed_geometries[index]) {
@@ -276,7 +276,7 @@ size_t Paths::Length() {
 
 
 void Paths::RealizeGeometry(DXState *dx, PathId id) {
-    size_t index = *this->index.GetPtr(id);
+    size_t index = this->index[id];
 
     ShapeData* path                                 = &this->shapes[index];
     ID2D1TransformedGeometry** transformed_geometry = &this->transformed_geometries[index];
@@ -288,7 +288,7 @@ void Paths::RealizeGeometry(DXState *dx, PathId id) {
 // We provide a method to realize only the high fidelity geometry for the pipeline
 // shapes which get changed too often to do the more expensive low fidelity realization
 void Paths::RealizeHighFidelityGeometry(DXState *dx, PathId id) {
-    size_t index = *this->index.GetPtr(id);
+    size_t index = this->index[id];
 
     ShapeData* path                                 = &this->shapes[index];
     ID2D1TransformedGeometry** transformed_geometry = &this->transformed_geometries[index];
@@ -318,22 +318,22 @@ void Paths::RealizeAllHighFidelityGeometry(DXState *dx) {
 }
 
 ShapeData* Paths::GetShapeData(PathId id) {
-    size_t index = *this->index.GetPtr(id);
+    size_t index = this->index[id];
     return &this->shapes[index];
 }
 
 ID2D1TransformedGeometry** Paths::GetTransformedGeometry(PathId id) {
-    size_t index = *this->index.GetPtr(id);
+    size_t index = this->index[id];
     return &this->transformed_geometries[index];
 }
 
 ID2D1GeometryRealization** Paths::GetLowFidelity(PathId id) {
-    size_t index = *this->index.GetPtr(id);
+    size_t index = this->index[id];
     return &this->low_fidelities[index];
 }
 
 Rect Paths::GetBounds(PathId id) {
-    size_t index = *this->index.GetPtr(id);
+    size_t index = this->index[id];
 
     ID2D1TransformedGeometry* transformed_geo = this->transformed_geometries[index];
 
@@ -345,7 +345,7 @@ Rect Paths::GetBounds(PathId id) {
 }
 
 void Paths::SetTransform(PathId id, Transformation transform) {
-    size_t index = *this->index.GetPtr(id);
+    size_t index = this->index[id];
     this->shapes.Data()[index].transform = transform;
 }
 
@@ -407,7 +407,7 @@ CollectionId Collections::CreateCollectionForShape(PathId shape_id) {
 }
 
 CollectionId Collections::GetCollectionId(PathId shape_id) {
-    return *this->collections.GetPtr(shape_id);
+    return this->collections[shape_id];
 }
 
 void Collections::SetCollection(PathId shape_id, CollectionId collection_id) {
@@ -418,7 +418,7 @@ void Collections::SetCollection(PathId shape_id, CollectionId collection_id) {
     DynamicArray<size_t>* new_collection = this->reverse_collections_index.GetPtrOrDefault(collection_id);
     new_collection->Push(shape_id);
 
-    DynamicArray<size_t>* old_collection = this->reverse_collections_index.GetPtr(old_collection_id);
+    DynamicArray<size_t>* old_collection = &this->reverse_collections_index[old_collection_id];
     if (old_collection->Length() == 1) {
         old_collection->Free();
         this->reverse_collections_index.Remove(old_collection_id);
@@ -428,10 +428,10 @@ void Collections::SetCollection(PathId shape_id, CollectionId collection_id) {
 }
 
 void Collections::RemovePath(PathId id) {
-    auto collection = *this->collections.GetPtr(id);
+    CollectionId collection = this->collections[id];
     this->collections.Remove(id);
 
-    auto collection_shapes = this->reverse_collections_index.GetPtr(collection);
+    DynamicArray<PathId>* collection_shapes = &this->reverse_collections_index[collection];
     collection_shapes->Remove(id);
 
     if (!collection_shapes->Length()) {
@@ -476,7 +476,7 @@ void Tags::Free() {
 }
 
 DynamicArray<TagId>* Tags::GetTags(PathId shape_id) {
-    return this->tags.GetPtr(shape_id);
+    return &this->tags[shape_id];
 }
 
 void Tags::AssignTag(PathId shape_id, TagId tag_id) {
@@ -518,7 +518,7 @@ void Tags::RemovePath(PathId id) {
 
     if (path_tags) {
         for (auto& tag : *path_tags) {
-            auto reverse_tag_lookup = this->reverse_tags.GetPtr(tag);
+            auto reverse_tag_lookup = &this->reverse_tags[tag];
             reverse_tag_lookup->Remove(id);
             if (!reverse_tag_lookup->Length()) {
                 reverse_tag_lookup->Free();

@@ -256,12 +256,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                             app.documents.Push(Document(100));
                         }
 
-                        Pipeline p;
+                        PipelineActions p;
 
                         size_t memory_estimation = app.ActiveDoc()->paths.Length() * 100;
                         LinearAllocatorPool allocator = LinearAllocatorPool(memory_estimation);
-
-                        p.bins.Push(Vec2Many(Vec2(48, 24), kInfinity), &allocator);
 
                         // Right now these are strings because we can't compare a String to a StringEx currently but hopefully
                         // we come up with something better in the future
@@ -271,8 +269,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         TagId bound_id = app.ActiveDoc()->tag_god.GetTagId(bound_tag);
                         TagId text_id  = app.ActiveDoc()->tag_god.GetTagId(text_tag);
 
-                        p.tags.Push(bound_id, &allocator);
-                        p.tags.Push(text_id,  &allocator);
+                        bound_tag.Free();
+                        text_tag.Free();
+
+                        DynamicArrayEx<TagId, LinearAllocatorPool> filter_tags;
+                        filter_tags.Push(bound_id, &allocator);
+                        filter_tags.Push(text_id, &allocator);
+                        p.actions.Push(PipelineAction::Filter(filter_tags), &allocator);
+
+                        auto bins = DynamicArrayEx<Vec2Many, LinearAllocatorPool>();
+                        bins.Push(Vec2Many(Vec2(48, 24), kInfinity), &allocator);
+
+                        p.actions.Push(PipelineAction::Layout(bins), &allocator);
 
                         p.Run(app.ActiveDoc(), &dxstate, &allocator);
 

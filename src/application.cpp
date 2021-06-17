@@ -242,7 +242,7 @@ TagGod::TagGod() :
 // Gets the id for a tag or creates a new tag id for it if it is not currently
 // in its index
 TagId TagGod::GetTagId(String tag) {
-    TagId* id = this->index.GetPtr(tag);
+    TagId* id = &this->index[tag];
     if (id) {
         return *id;
     }

@@ -221,7 +221,6 @@ class DynamicArrayEx {
         return new_array;
     }
 
-
     void Free(A *allocator) {
         allocator->Free(this->data);
     }
@@ -761,6 +760,9 @@ class HashMapEx {
        }
     }
 
+    V& operator[](K k) {
+        return *this->GetPtr(k);
+    }
 
     using Iterator = HashMapIterator<K, V>;
     Iterator begin() {
@@ -850,6 +852,10 @@ class HashMap {
 
     void Clear() {
         this->map.Clear();
+    }
+
+    V& operator[](K key) {
+        return *this->GetPtr(key);
     }
 
     using Iterator = HashMapIterator<K, V>;
