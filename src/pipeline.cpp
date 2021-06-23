@@ -26,7 +26,7 @@ void PipelineActions::Run(Document *input_doc, DXState *dx, LinearAllocatorPool*
     for (auto &action : this->actions) {
         switch (action.type) {
             case PipelineActionType::Filter: {
-                printf("running filter\n");
+               printf("running filter\n");
                RunFilter(input_doc, dx, allocator, &action.value.filter_tags);
                break;
             }
